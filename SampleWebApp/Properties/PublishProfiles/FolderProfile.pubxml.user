@@ -6,6 +6,6 @@ by editing this MSBuild file. In order to learn more about this please visit htt
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
     <TimeStampOfAssociatedLegacyPublishXmlFile />
-    <_PublishTargetUrl>C:\Users\sergioc\OneDrive - KONGSBERG MARITIME AS\Pluralsight\microsoft-azure-containers-deploying-managing\04\demos\m4demos\SampleWebApp\out</_PublishTargetUrl>
+    <_PublishTargetUrl>C:\Users\sergioc\source\repos\HomeDevelopment\SampleWebApp\out</_PublishTargetUrl>
   </PropertyGroup>
 </Project>
