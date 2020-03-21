@@ -3,7 +3,6 @@ import logging
 import time
 import os
 
-
 from datetime import datetime
 from opcua import Client
 from opcua import ua
@@ -26,7 +25,7 @@ def clientAndFiles():
 
     # client = Client("opc.tcp://KPC22014549:21381/MatrikonOpcUaWrapper")    
     # filename = r"C:\Users\sergioc\OneDrive - KONGSBERG MARITIME AS\Projects\Edge Gateway for Shell\Trond app to read tags unit measures\Taglist.txt"
-    # outfile =  r"C:\Users\sergioc\OneDrive - KONGSBERG MARITIME AS\Projects\Edge Gateway for Shell\Trond app to read tags unit measures\resultTagList-" + current_time +".txt"
+    # outfile =  r"C:\Users\sergioc\OneDrive - KONGSBERG MARITIME AS\Projects\Edge Gateway for Shell\Trond app to read tags unit measures\resultTagList-" + current_time +".csv"
 
 
     d = dict();
@@ -130,8 +129,14 @@ class start_Subscription(object):
         writeMessageInFile(self.result_file, self.message)        
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.WARN)
-    
+        
+    if __debug__:
+        logging.basicConfig(level=logging.WARN)
+        print ("Debug ON")
+    else:
+        logging.basicConfig(level=logging.ERROR)
+        print ("Debug OFF")
+
     clientAndFiles = clientAndFiles()
 
     try:
