@@ -1,37 +1,55 @@
 import sys
 import logging
 import time
-import os
 
 from datetime import datetime
 from opcua import Client
 from opcua import ua
 
-
 now = datetime.now()
 current_time = now.strftime("_%Y_%m_%d_%H_%M_%S")
+
+def num(s):
+    try:
+        if not s is None:
+            return int(s)
+        else :
+            return 10
+    except :
+        return 10 #if any error the programm will set subscriptions for 10sec
+
 
 def clientAndFiles():
 
     #Client run with arguments
-    if len(sys.argv) != 4:
-        print("Syntax: " , sys.argv[0], "[OpcUaUrl]", "[Inputfile]", "[OutputfileName]")
+    if len(sys.argv) != 5 and len(sys.argv) != 4:
+        print("Syntax: " , sys.argv[0], "[OpcUaUrl]", "[Inputfile]", "[OutputfileName]", "[SusbcriptionTimeInSec]")
         sys.exit(-1)
         
     url = sys.argv[1]
     filename = sys.argv[2]
     outfile =  sys.argv[3] + current_time + ".csv"
+    try:
+        susbcriptionTimeInSec = num(sys.argv[4])
+    except:
+        susbcriptionTimeInSec = num(10)
     client = Client(url)
 
     # client = Client("opc.tcp://KPC22014549:21381/MatrikonOpcUaWrapper")    
     # filename = r"C:\Users\sergioc\OneDrive - KONGSBERG MARITIME AS\Projects\Edge Gateway for Shell\Trond app to read tags unit measures\Taglist.txt"
     # outfile =  r"C:\Users\sergioc\OneDrive - KONGSBERG MARITIME AS\Projects\Edge Gateway for Shell\Trond app to read tags unit measures\resultTagList-" + current_time +".csv"
-
+    # susbcriptionTimeInSec = num("10")
+    
+    client.connect()
+    client.load_type_definitions()  # load definition of server specific structures/extension objects
+    taglist_file_opened = open(filename, "r")
+    result_file_opened = open(outfile, "w")
 
     d = dict();
-    d['opcua_client'] = Client("opc.tcp://KPC22014549:21381/MatrikonOpcUaWrapper")
-    d['taglist_file'] = filename
-    d['result_file']  = outfile
+    d['opcua_client'] = client
+    d['taglist_file'] = taglist_file_opened
+    d['result_file']  = result_file_opened
+    d['susbcriptionTimeInSec'] = susbcriptionTimeInSec
     return d   
 
 def readNodeValues (var, dataValue):
@@ -113,7 +131,7 @@ class subHandler(object):
 
 class start_Subscription(object):
 
-    def __init__(self, opcua_server, result_file, ua_node):
+    def __init__(self, opcua_server, result_file, susbcriptionTimeInSec, ua_node):
         self.ua_node = ua_node
         self.result_file = result_file
         self.message = ""
@@ -122,41 +140,31 @@ class start_Subscription(object):
         sub = opcua_server.create_subscription(500, handler)
         handle = sub.subscribe_data_change(self.ua_node)
         
-        time.sleep(10) #10 sec to read the value of a tags
+        time.sleep(susbcriptionTimeInSec) #Default 10 sec to read the value of a tags
         
         sub.unsubscribe(handle)
         sub.delete()
         writeMessageInFile(self.result_file, self.message)        
 
-if __name__ == "__main__":
-        
-    if __debug__:
-        logging.basicConfig(level=logging.WARN)
-        print ("Debug ON")
-    else:
-        logging.basicConfig(level=logging.ERROR)
-        print ("Debug OFF")
+if __name__ == "__main__":  
+
+    logging.basicConfig(level=logging.ERROR)      
 
     clientAndFiles = clientAndFiles()
 
-    try:
-        clientAndFiles['opcua_client'].connect()
-        clientAndFiles['opcua_client'].load_type_definitions()  # load definition of server specific structures/extension objects
-        taglist_file_opened = open(clientAndFiles['taglist_file'], "r")
-        result_file_opened = open(clientAndFiles['result_file'], "w")        
-        
+    try:               
         message = "Tag from file  ,\t Tagid  ,\t Value ,\t StatusCode ,\t Timestamp ,\t Variant value ,\t Error messages"                   
-        writeMessageInFile(result_file_opened, message)
+        writeMessageInFile(clientAndFiles['result_file'], message)
         
-        for x in taglist_file_opened:
+        for x in clientAndFiles['taglist_file']:
             tag=x.strip()
             try:  
                 var = clientAndFiles['opcua_client'].get_node(tag) 
 
-                start_Subscription(clientAndFiles['opcua_client'], result_file_opened, var)
+                start_Subscription(clientAndFiles['opcua_client'], clientAndFiles['result_file'], clientAndFiles['susbcriptionTimeInSec'], var)
 
             except Exception as e: 
                 message = tag + " ,\t Cannot read tag from source. Error message: "  + str(e) 
-                writeMessageInFile(result_file_opened, message)       
+                writeMessageInFile(clientAndFiles['result_file'], message)       
     finally:
         clientAndFiles['opcua_client'].disconnect()
