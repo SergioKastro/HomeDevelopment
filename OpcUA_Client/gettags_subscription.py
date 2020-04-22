@@ -9,36 +9,37 @@ from opcua import ua
 now = datetime.now()
 current_time = now.strftime("_%Y_%m_%d_%H_%M_%S")
 
-def num(s):
+def num(s, defaultValue):
     try:
         if not s is None:
             return int(s)
         else :
-            return 10
+            return defaultValue
     except :
-        return 10 #if any error the programm will set subscriptions for 10sec
+        return defaultValue #if any error the programm will set subscriptions for defaultValue
 
 
 def clientAndFiles():
 
     #Client run with arguments
-    if len(sys.argv) != 5 and len(sys.argv) != 4:
-        print("Syntax: " , sys.argv[0], "[OpcUaUrl]", "[Inputfile]", "[OutputfileName]", "[SusbcriptionTimeInSec]")
-        sys.exit(-1)
+    # if len(sys.argv) != 6 and len(sys.argv) != 4:
+    #     print("Syntax: " , sys.argv[0], "[OpcUaUrl]", "[Inputfile]", "[OutputfileName]", "[SusbcriptionTimeInMSec]", "[DelayTimeToReadTagsInSec]")
+    #     sys.exit(-1)
         
-    url = sys.argv[1]
-    filename = sys.argv[2]
-    outfile =  sys.argv[3] + current_time + ".csv"
-    try:
-        susbcriptionTimeInSec = num(sys.argv[4])
-    except:
-        susbcriptionTimeInSec = num(10)
-    client = Client(url)
+    # url = sys.argv[1]
+    # filename = sys.argv[2]
+    # outfile =  sys.argv[3] + current_time + ".csv"
 
-    # client = Client("opc.tcp://KPC22014549:21381/MatrikonOpcUaWrapper")    
-    # filename = r"C:\Users\sergioc\OneDrive - KONGSBERG MARITIME AS\Projects\Edge Gateway for Shell\Trond app to read tags unit measures\Taglist.txt"
-    # outfile =  r"C:\Users\sergioc\OneDrive - KONGSBERG MARITIME AS\Projects\Edge Gateway for Shell\Trond app to read tags unit measures\resultTagList-" + current_time +".csv"
-    # susbcriptionTimeInSec = num("10")
+    # susbcriptionTimeInSec = num(sys.argv[4], 500) #This is the sampling rate of the subscription for each tag
+    # delayTimeToReadTagsInSec= num(sys.argv[5], 10) # This is the time that we will delay to read the values of the tags 
+
+    # client = Client(url)
+
+    client = Client("opc.tcp://KPC22014549:21381/MatrikonOpcUaWrapper")    
+    filename = r"C:\Users\sergioc\OneDrive - KONGSBERG MARITIME AS\Projects\Edge Gateway for Shell\Trond app to read tags unit measures\Taglist.txt"
+    outfile =  r"C:\Users\sergioc\OneDrive - KONGSBERG MARITIME AS\Projects\Edge Gateway for Shell\Trond app to read tags unit measures\resultTagList-" + current_time +".csv"
+    susbcriptionTimeInSec = num(500, 500)
+    delayTimeToReadTagsInSec= num(10, 10)
     
     client.connect()
     client.load_type_definitions()  # load definition of server specific structures/extension objects
@@ -50,6 +51,7 @@ def clientAndFiles():
     d['taglist_file'] = taglist_file_opened
     d['result_file']  = result_file_opened
     d['susbcriptionTimeInSec'] = susbcriptionTimeInSec
+    d['delayTimeToReadTagsInSec'] = delayTimeToReadTagsInSec
     return d   
 
 def readNodeValues (var, dataValue):
@@ -113,14 +115,12 @@ def writeMessageInFile(fileOpened, message):
     fileOpened.write("\n")
 
 class subHandler(object):
-
     """
     Subscription Handler. To receive events from server for a subscription
     data_change and event methods are called directly from receiving thread.
     Do not do expensive, slow or network operation there. Create another 
     thread if you need to do such a thing
-    """
-    
+    """    
     def __init__(self, obj):
         self.obj = obj        
         
@@ -131,16 +131,16 @@ class subHandler(object):
 
 class start_Subscription(object):
 
-    def __init__(self, opcua_server, result_file, susbcriptionTimeInSec, ua_node):
+    def __init__(self, opcua_server, result_file, susbcriptionTimeInSec, delayTimeToReadTagsInSec, ua_node):
         self.ua_node = ua_node
         self.result_file = result_file
         self.message = ""
 
         handler = subHandler(self)
-        sub = opcua_server.create_subscription(500, handler)
+        sub = opcua_server.create_subscription(susbcriptionTimeInSec, handler)
         handle = sub.subscribe_data_change(self.ua_node)
         
-        time.sleep(susbcriptionTimeInSec) #Default 10 sec to read the value of a tags
+        time.sleep(delayTimeToReadTagsInSec) #Default 10 sec to read the value of a tags
         
         sub.unsubscribe(handle)
         sub.delete()
@@ -161,7 +161,7 @@ if __name__ == "__main__":
             try:  
                 var = clientAndFiles['opcua_client'].get_node(tag) 
 
-                start_Subscription(clientAndFiles['opcua_client'], clientAndFiles['result_file'], clientAndFiles['susbcriptionTimeInSec'], var)
+                start_Subscription(clientAndFiles['opcua_client'], clientAndFiles['result_file'], clientAndFiles['susbcriptionTimeInSec'], clientAndFiles['delayTimeToReadTagsInSec'], var)
 
             except Exception as e: 
                 message = tag + " ,\t Cannot read tag from source. Error message: "  + str(e) 
