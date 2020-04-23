@@ -22,24 +22,24 @@ def num(s, defaultValue):
 def clientAndFiles():
 
     #Client run with arguments
-    # if len(sys.argv) != 6 and len(sys.argv) != 4:
-    #     print("Syntax: " , sys.argv[0], "[OpcUaUrl]", "[Inputfile]", "[OutputfileName]", "[SusbcriptionTimeInMSec]", "[DelayTimeToReadTagsInSec]")
-    #     sys.exit(-1)
+    if len(sys.argv) != 6 and len(sys.argv) != 4:
+        print("Syntax: " , sys.argv[0], "[OpcUaUrl]", "[Inputfile]", "[OutputfileName]", "[SusbcriptionTimeInMSec]", "[DelayTimeToReadTagsInSec]")
+        sys.exit(-1)
         
-    # url = sys.argv[1]
-    # filename = sys.argv[2]
-    # outfile =  sys.argv[3] + current_time + ".csv"
+    url = sys.argv[1]
+    filename = sys.argv[2]
+    outfile =  sys.argv[3] + current_time + ".csv"
 
-    # susbcriptionTimeInSec = num(sys.argv[4], 500) #This is the sampling rate of the subscription for each tag
-    # delayTimeToReadTagsInSec= num(sys.argv[5], 10) # This is the time that we will delay to read the values of the tags 
+    susbcriptionTimeInSec = num(sys.argv[4], 500) #This is the sampling rate of the subscription for each tag
+    delayTimeToReadTagsInSec= num(sys.argv[5], 10) # This is the time that we will delay to read the values of the tags 
 
-    # client = Client(url)
+    client = Client(url)
 
-    client = Client("opc.tcp://KPC22014549:21381/MatrikonOpcUaWrapper")    
-    filename = r"C:\Users\sergioc\OneDrive - KONGSBERG MARITIME AS\Projects\Edge Gateway for Shell\Trond app to read tags unit measures\Taglist.txt"
-    outfile =  r"C:\Users\sergioc\OneDrive - KONGSBERG MARITIME AS\Projects\Edge Gateway for Shell\Trond app to read tags unit measures\resultTagList-" + current_time +".csv"
-    susbcriptionTimeInSec = num(500, 500)
-    delayTimeToReadTagsInSec= num(10, 10)
+    # client = Client("opc.tcp://KPC22014549:21381/MatrikonOpcUaWrapper")    
+    # filename = r"C:\Users\sergioc\OneDrive - KONGSBERG MARITIME AS\Projects\Edge Gateway for Shell\Trond app to read tags unit measures\Taglist.txt"
+    # outfile =  r"C:\Users\sergioc\OneDrive - KONGSBERG MARITIME AS\Projects\Edge Gateway for Shell\Trond app to read tags unit measures\resultTagList-" + current_time +".csv"
+    # susbcriptionTimeInSec = num(500, 500)
+    # delayTimeToReadTagsInSec= num(10, 10)
     
     client.connect()
     client.load_type_definitions()  # load definition of server specific structures/extension objects
