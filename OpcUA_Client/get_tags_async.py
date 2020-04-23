@@ -4,12 +4,20 @@ sys.path.insert(0, "..")
 from asyncua import Client, Node, ua
 
 async def main():
+     #local run
+    # filename = r"C:\Users\sergioc\OneDrive - KONGSBERG MARITIME AS\Projects\Edge Gateway for Shell\Trond app to read tags unit measures\Taglist.txt"
+    # outfile =  r"C:\Users\sergioc\OneDrive - KONGSBERG MARITIME AS\Projects\Edge Gateway for Shell\Trond app to read tags unit measures\resultTagList.txt"
+    # url = r"opc.tcp://KPC22014549:21381/MatrikonOpcUaWrapper"
+
+    #Client run with arguments
     if len(sys.argv) != 4:
-       print("Syntax:", sys.argv[0], "[OpcUaUrl]", "[Inputfile]", "[Outputfile]")
-       sys.exit(-1)
+        print("Syntax: " , sys.argv[0], "[OpcUaUrl]", "[Inputfile]", "[Outputfile]")
+        sys.exit(-1)
+        
     url = sys.argv[1]
     filename = sys.argv[2]
     outfile =  sys.argv[3]
+
     async with Client(url=url) as client:
         try:
             f = open(filename, "r")
