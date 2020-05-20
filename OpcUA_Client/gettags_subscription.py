@@ -18,42 +18,66 @@ def num(s, defaultValue):
     except :
         return defaultValue #if any error the programm will set subscriptions for defaultValue
 
-
-def getClientAndFiles():
-
-    # Client run with arguments
-    if len(sys.argv) != 6 and len(sys.argv) != 4:
-        print("Syntax: " , sys.argv[0], "[OpcUaUrl]", "[Inputfile]", "[OutputfileName]", "[SusbcriptionTimeInMSec]", "[DelayTimeToReadTagsInSec]")
-        sys.exit(-1)
-        
-    url = sys.argv[1]
-    filename = sys.argv[2]
-    outfile =  sys.argv[3] + current_time + ".csv"
-
-    susbcriptionTimeInMSec = num(sys.argv[4], 1000) #This is the sampling rate of the subscription for each tag in MSEC
-    delayTimeToReadTagsInSec= num(sys.argv[5], 30) # This is the time that we will delay to read the values of the tags in SEC
-
-    client = Client(url)
-
-    ######  Uncommented this line to run in Debug mode ######
-    # client = Client("opc.tcp://KPC22014549:21381/MatrikonOpcUaWrapper")    
-    # filename = r"C:\Users\sergioc\OneDrive - KONGSBERG MARITIME AS\Projects\Edge Gateway for Shell\Trond app to read tags unit measures\Taglist.txt"
-    # outfile =  r"C:\Users\sergioc\OneDrive - KONGSBERG MARITIME AS\Projects\Edge Gateway for Shell\Trond app to read tags unit measures\resultTagList-" + current_time +".csv"
-    # susbcriptionTimeInMSec = num(500, 500)
-    # delayTimeToReadTagsInSec= num(10, 10)
+class opcUaClient():
     
-    client.connect()
-    client.load_type_definitions()  # load definition of server specific structures/extension objects
-    taglist_file_opened = open(filename, "r")
-    result_file_opened = open(outfile, "w")
+    def __init__(self, url):
+        self.session = Client(url)
+        self.session.connect()
+        self.session.load_type_definitions()  # load definition of server specific structures/extension objects 
+             
 
-    d = dict();
-    d['opcua_client'] = client
-    d['taglist_file'] = taglist_file_opened
-    d['result_file']  = result_file_opened
-    d['susbcriptionTimeInMSec'] = susbcriptionTimeInMSec
-    d['delayTimeToReadTagsInSec'] = delayTimeToReadTagsInSec
-    return d   
+    def getArrayNodesFromOpcServer(self, tagList, resultFile):
+        localArrayNodes = []
+        for x in tagList:
+            tag=x.strip()
+            try:  
+                var = self.session.get_node(tag)                
+                
+                localArrayNodes.append(var)
+
+            except Exception as e: 
+                errorMessage = tag + " ,\t Cannot read tag from source. Error message: "  + str(e) 
+                writeMessageInFile(resultFile, errorMessage)       
+        return localArrayNodes
+
+def getParameters():
+    
+        # Client run with arguments
+        # if len(sys.argv) != 8 and len(sys.argv) != 4:
+        #     print("Syntax: " , sys.argv[0], "[OpcUaUrl]", "[Inputfile]", "[OutputfileName]", "[SusbcriptionTimeInSec]", "[DelayTimeToReadTagsInSec]")
+        #     sys.exit(-1)
+            
+        # url = sys.argv[1]
+        # filename = sys.argv[2]
+        # outfile =  sys.argv[3] + current_time + ".csv"
+
+        # susbcriptionTimeInSec = num(sys.argv[4], 1000) #This is the sampling rate of the subscription for each tag in MSEC
+        # delayTimeToReadTagsInSec= num(sys.argv[5], 30) # This is the time that we will delay to read the values of the tags in SEC
+        # batchLoadSizeItems = num(sys.argv[6], 200) # This is the size of the batch. How many tags should we load at a time (1000 tags)
+        # delayLoadBatchTimeInSec = num (sys.argv[7], 60) # This is the time in milleseconds that we will wait to load each of the batches
+
+        url = "opc.tcp://KPC22014549.kongsberg.master.int:53530/OPCUA/SimulationServer"  # Prosys server
+        # url ="opc.tcp://KPC22014549:21381/MatrikonOpcUaWrapper" # Matrikon server
+        filename = r"C:\Users\sergioc\OneDrive - KONGSBERG MARITIME AS\Projects\Edge Gateway for Shell\GetTags Python App\Taglist.txt"
+        outfile =  r"C:\Users\sergioc\OneDrive - KONGSBERG MARITIME AS\Projects\Edge Gateway for Shell\GetTags Python App\resultTagList-" + current_time +".csv"
+        susbcriptionTimeInSec = num(15, 10)
+        delayTimeToReadTagsInSec = num(60, 30)
+        batchLoadSizeItems = num(100, 200)
+        delayLoadBatchTimeInSec = num (0, 60)        
+        
+        taglist_file_opened = open(filename, "r")
+        result_file_opened = open(outfile, "w")
+
+        d = dict();
+        d['opcServerUrl'] = url
+        d['taglist_file'] = taglist_file_opened
+        d['result_file']  = result_file_opened
+        d['susbcriptionTimeInSec'] = susbcriptionTimeInSec
+        d['delayTimeToReadTagsInSec'] = delayTimeToReadTagsInSec
+        d['batchLoadSizeItems'] = batchLoadSizeItems
+        d['delayLoadBatchTimeInSec'] = delayLoadBatchTimeInSec
+
+        return d
 
 def readNodeValues (var, dataValue):
     message = ""
@@ -65,8 +89,7 @@ def readNodeValues (var, dataValue):
     except Exception as e:
         error = True
         tagid = ". Error message: "  + str(e)
-        message = message + ",\t error trying to read the tagId from the tag. "
-                     
+        message = message + ",\t error trying to read the tagId from the tag. "                     
     
     #4th Read the whole variant Value of the tag
     try:               
@@ -92,7 +115,7 @@ def readNodeValues (var, dataValue):
         statusCode = ". Error message: "  + str(e)
         message = message + ",\t error trying to read the statusCode from the tag. "
 
-    #7th Read the timeStampt of the tag
+    #7th Read the timeStamp of the tag
     try:               
         timestamp =dataValue.SourceTimestamp.isoformat('T')+"Z"
     except Exception as e:
@@ -109,26 +132,14 @@ def readNodeValues (var, dataValue):
     print("ReadNodeValues \n" , message)
     return message + "\n"
 
-def writeMessageInFile(fileOpened, message):
-
-    line = message  
-    fileOpened.write(line)
+def writeMessageInFile(fileOpened, messageToWrite):
+    fileOpened.write(messageToWrite)
     fileOpened.write("\n")
 
-def getArrayNodesFromOpcServer(tagList, opcClient, resultFile):
-    localArrayNodes = []
-    for x in tagList:
-        tag=x.strip()
-        try:  
-            var = opcClient.get_node(tag)                
-            
-            localArrayNodes.append(var)
-
-        except Exception as e: 
-            message = tag + " ,\t Cannot read tag from source. Error message: "  + str(e) 
-            writeMessageInFile(resultFile, message)       
-    return localArrayNodes
-
+def batch(iterable, n=1):
+    l = len(iterable)
+    for ndx in range(0, l, n):
+        yield iterable[ndx:min(ndx + n, l)]
 
 class subHandler(object):
     """
@@ -140,25 +151,41 @@ class subHandler(object):
     def __init__(self, obj):
         self.obj = obj        
         
-    def datachange_notification(self, node, val, data):  
-        
-        line = readNodeValues(node, data.monitored_item.Value)        
-        self.obj.message = self.obj.message + line    
-        writeMessageInFile(self.obj.result_file, self.obj.message) 
+    def datachange_notification(self, node, val, data):          
+        line = readNodeValues(node, data.monitored_item.Value)         
+        writeMessageInFile(self.obj.result_file, line) 
 
-class start_Subscription(object):
+class OpcUaSubscription(object):
 
-    def __init__(self, opcua_server, result_file, susbcriptionTimeInMSec, ua_node):
-        self.ua_node = ua_node
+    def __init__(self, opcua_client_session, result_file, susbcriptionTimeInSec):
         self.result_file = result_file
-        self.message = ""
 
         handler = subHandler(self)
-        self.sub = opcua_server.create_subscription(susbcriptionTimeInMSec, handler)
-        self.arraynodesHandlers = []
-        for node in self.ua_node:
-            nodehandle = self.sub.subscribe_data_change(node)
-            self.arraynodesHandlers.append(nodehandle)
+        susbcriptionTimeInMSec = susbcriptionTimeInSec * 1000   # Converted from Sec into Msec
+        self.sub = opcua_client_session.create_subscription(susbcriptionTimeInMSec, handler)
+        self.arraynodesHandlers = []        
+    
+    def start_Subscription_LazyLoad(self, nodes, batchLoadSizeItems, delayLoadBatchTimeInSec ):
+        delayToSubscribeBetweenNodes = delayLoadBatchTimeInSec/batchLoadSizeItems
+
+        for batchNodes in batch(arrayNodes, batchLoadSizeItems):
+            # Add all nodes into a subscription and start listening
+            self.start_Subscription(batchNodes) 
+
+            # Add a small delay between subscription
+            time.sleep(delayLoadBatchTimeInSec )    
+
+
+
+    def start_Subscription(self, nodes):
+        for node in nodes:
+            try:
+                nodehandle = self.sub.subscribe_data_change(node)
+                self.arraynodesHandlers.append(nodehandle)    
+            except Exception as e:
+                error = True
+                errorMessage = ". Error adding node " + str(node.nodeid) + ": " + str(e)
+                writeMessageInFile(self.result_file, errorMessage)        
 
     def close_Subscription(self):
         for handle in self.arraynodesHandlers:
@@ -169,24 +196,29 @@ if __name__ == "__main__":
 
     logging.basicConfig(level=logging.ERROR)      
 
-    clientAndFiles = getClientAndFiles()
+    parameters = getParameters()
 
     try:               
-        message = "Tagid  ,\t Value ,\t StatusCode ,\t Timestamp ,\t Variant value ,\t Error messages"                   
-        writeMessageInFile(clientAndFiles['result_file'], message)
+        firstLineMessage = "Tagid  ,\t Value ,\t StatusCode ,\t Timestamp ,\t Variant value ,\t Error messages"                   
+        writeMessageInFile(parameters['result_file'], firstLineMessage)
         
-        # Read the nodes from server 
-        arrayNodes = getArrayNodesFromOpcServer(clientAndFiles['taglist_file'], clientAndFiles['opcua_client'],clientAndFiles['result_file'])
+        # Init Opcua Client Session
+        opcua_client = opcUaClient(parameters['opcServerUrl'])
 
-        # Add all nodes into a subscription
-        subscription = start_Subscription(clientAndFiles['opcua_client'], clientAndFiles['result_file'], clientAndFiles['susbcriptionTimeInMSec'], arrayNodes)
+        # Read the nodes from server 
+        arrayNodes = opcua_client.getArrayNodesFromOpcServer(parameters['taglist_file'],parameters['result_file'])
+
+        # Create OpcUa Susbcription
+        subscription = OpcUaSubscription(opcua_client.session, parameters['result_file'], parameters['susbcriptionTimeInSec'])
+
+        # Add items into susbcription with a delay between addings
+        subscription.start_Subscription_LazyLoad(arrayNodes, parameters['batchLoadSizeItems'], parameters['delayLoadBatchTimeInSec'])               
 
         # Delay the program to read the values 
-        time.sleep(clientAndFiles['delayTimeToReadTagsInSec'] ) #Default 30 sec to read the value of all tags
+        time.sleep(parameters['delayTimeToReadTagsInSec'] ) #Default 30 sec to read the value of all tags
 
         # Close the subscription
         subscription.close_Subscription()
-
         
     finally:
-        clientAndFiles['opcua_client'].disconnect()
+        opcua_client.session.disconnect()

@@ -22,13 +22,18 @@ The program has two versions
 We need to use the second version because publishing mode is the only way allowed to read the data from the tags (sensors) when running from Shell OPCUA Server.
 
 Command:
-	 gettags_subscription.exe [OPCUA Server Url] [file which taglist] [file to write resulys] [susbcriptionTimeInMs], [delayTimeToReadTagsInSc]
-	 gettags_subscription.exe "opc.tcp://KPC22014549:21381/MatrikonOpcUaWrapper/" taglist.txt resultTagList 1000, 30
+	1.- Polling (Synchronous):
+		gettags.exe "[OpcUaUrl]", "[Inputfile]", "[Outputfile]"
+		gettags.exe "opc.tcp://KPC22014549:21381/MatrikonOpcUaWrapper/" taglist.txt resultTagList.txt
+
+	2.- Publishing (Asynchronous):)
+		gettags_subscription.exe [OPCUA Server Url] [file which taglist] [file to write resulys] [susbcriptionTimeInSec], [delayTimeToReadTagsInSec]
+		gettags_subscription.exe "opc.tcp://KPC22014549:21381/MatrikonOpcUaWrapper/" taglist.txt resultTagList 1, 30
 	
 	Shell
-	 gettags_subscription.exe "opc.tcp://3p-int-mat03:21381/MatrikonOpcUaWrapper/" taglist_Static_OnlyUnits.txt resultTagListOnlyUnits 5000, 30
+	 gettags_subscription.exe "opc.tcp://3p-int-mat03:21381/MatrikonOpcUaWrapper/" taglist_Static_OnlyUnits.txt resultTagListOnlyUnits 5, 30
 	
-	 gettags_subscription.exe "opc.tcp://3p-int-mat03:21381/MatrikonOpcUaWrapper/" taglist_Dynamic.txt resultTagListDynamic 5000, 30
+	 gettags_subscription.exe "opc.tcp://3p-int-mat03:21381/MatrikonOpcUaWrapper/" taglist_Dynamic.txt resultTagListDynamic 5, 30
 	
 	
 Pseudo-algorithm for version number 2: Publishing mode:
