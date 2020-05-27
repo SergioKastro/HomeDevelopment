@@ -4,6 +4,10 @@ namespace Kognifai.OPCUA.Client.Configuration
 {
     public class AppSettings
     {
+        public string OpcUaServerUrl { get; set; }
+        public string PrefixFileName { get; set; }
+        public string SensorListFilePath { get; set; }
+        public string DataFolder { get; set; }
         public int SubscriptionPublishIntervalMs { get; set; }
         public int? MonitoredItemsBatchSize { get; set; }
         public int? MonitoredItemsBatchIntervalMs { get; set; }

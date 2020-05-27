@@ -7,6 +7,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GetOpcUaTagsValues", "GetOp
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Kognifai.OPCUA.Client", "Kognifai.OPCUA.Client\Kognifai.OPCUA.Client.csproj", "{7FB73D2C-7F07-4452-B8D1-992E9D8E5EB4}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Kognifai.File", "Kognifai.File\Kognifai.File.csproj", "{896945D1-801A-45B9-926E-7AE2E07153CF}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -21,6 +23,10 @@ Global
 		{7FB73D2C-7F07-4452-B8D1-992E9D8E5EB4}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{7FB73D2C-7F07-4452-B8D1-992E9D8E5EB4}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{7FB73D2C-7F07-4452-B8D1-992E9D8E5EB4}.Release|Any CPU.Build.0 = Release|Any CPU
+		{896945D1-801A-45B9-926E-7AE2E07153CF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{896945D1-801A-45B9-926E-7AE2E07153CF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{896945D1-801A-45B9-926E-7AE2E07153CF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{896945D1-801A-45B9-926E-7AE2E07153CF}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

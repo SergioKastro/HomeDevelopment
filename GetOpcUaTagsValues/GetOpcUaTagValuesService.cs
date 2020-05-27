@@ -1,9 +1,9 @@
-﻿using System.ServiceProcess;
-using System.Timers;
-using System;
-using System.IO;
+﻿using Kognifai.File;
 using log4net;
+using System;
 using System.Runtime.InteropServices;
+using System.ServiceProcess;
+using System.Timers;
 
 namespace GetOpcUaTagsValues
 {
@@ -11,10 +11,11 @@ namespace GetOpcUaTagsValues
     {
         readonly Timer timer = new Timer();
         private static readonly ILog SysLog = LogManager.GetLogger(typeof(GetOpcUaTagValuesService));
+        private readonly string fileName = "Kognifai.TagsData.ServiceLog_" + DateTime.Now.Date.ToShortDateString().Replace('/', '_') + ".csv";
 
         public GetOpcUaTagValuesService()
         {
-            InitializeComponent();           
+            InitializeComponent();
         }
 
         protected override void OnStart(string[] args)
@@ -28,7 +29,8 @@ namespace GetOpcUaTagsValues
             SetServiceStatus(ServiceHandle, ref serviceStatus);
 
             //Here is the main task for my Service: We will call here our OPCUA Client
-            WriteToFile("Service is started at " + DateTime.Now);
+
+            FileManager.WriteToFile("Service is started at " + DateTime.Now, fileName);
             timer.Elapsed += new ElapsedEventHandler(OnElapsedTime);
             timer.Interval = 5000; //number in miliseconds  
             timer.Enabled = true;
@@ -48,12 +50,12 @@ namespace GetOpcUaTagsValues
             };
             SetServiceStatus(ServiceHandle, ref serviceStatus);
 
-            WriteToFile("Service is stopped at " + DateTime.Now);
+            FileManager.WriteToFile("Service is stopped at " + DateTime.Now, fileName);
 
 
             // Update the service state to Stopped.
             serviceStatus.dwCurrentState = ServiceState.SERVICE_STOPPED;
-            SetServiceStatus(ServiceHandle, ref serviceStatus);            
+            SetServiceStatus(ServiceHandle, ref serviceStatus);
         }
 
         protected override void OnShutdown()
@@ -63,35 +65,10 @@ namespace GetOpcUaTagsValues
 
         private void OnElapsedTime(object source, ElapsedEventArgs e)
         {
-            WriteToFile("Service is recall at " + DateTime.Now);
+            FileManager.WriteToFile("Service is recall at " + DateTime.Now, fileName);
         }
 
-        public void WriteToFile(string Message)
-        {
-            string path = AppDomain.CurrentDomain.BaseDirectory + "\\Logs";
-            if (!Directory.Exists(path))
-            {
-                Directory.CreateDirectory(path);
-            }
-            string filepath = AppDomain.CurrentDomain.BaseDirectory + "\\Logs\\ServiceLog_" + DateTime.Now.Date.ToShortDateString().Replace('/', '_') + ".txt";
-            if (!File.Exists(filepath))
-            {
-                // Create a file to write to.   
-                using (StreamWriter sw = File.CreateText(filepath))
-                {
-                    sw.WriteLine(Message);
-                }
-            }
-            else
-            {
-                using (StreamWriter sw = File.AppendText(filepath))
-                {
-                    sw.WriteLine(Message);
-                }
-            }
-        }
 
-        
         public enum ServiceState
         {
             SERVICE_STOPPED = 0x00000001,

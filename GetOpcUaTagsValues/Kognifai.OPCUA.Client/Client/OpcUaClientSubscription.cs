@@ -7,11 +7,11 @@ using System.Text;
 
 namespace Kognifai.OPCUA.Client.Client
 {
-    public class OpcUaClientSubscription 
+    public class OpcUaClientSubscription
     {
         private Subscription _subscription;
         private static readonly ILog SysLog = LogManager.GetLogger(typeof(OpcUaClient));
-        private readonly AppSettings _appSettings; 
+        private readonly AppSettings _appSettings;
         private bool IsSubscriptionTypePublishing { get; set; }
 
         public bool IsMatrikonServer { get; set; }
@@ -23,7 +23,7 @@ namespace Kognifai.OPCUA.Client.Client
         public Subscription CreateSubscription(OpcUaClientSession session)
         {
             SysLog.Info("Creating new subscription");
-            
+
             IsSubscriptionTypePublishing = true;
 
             _subscription = new Subscription

@@ -1,4 +1,5 @@
-﻿using Kognifai.OPCUA.Client.Client;
+﻿using Kognifai.File;
+using Kognifai.OPCUA.Client.Client;
 using Kognifai.OPCUA.Client.Configuration;
 using log4net;
 using Microsoft.Extensions.Configuration;
@@ -23,13 +24,16 @@ namespace Kognifai.OPCUA.Client
                 .Build()
                 .Get<AppSettings>();
 
-            var opcUaClient = new OpcUaClient("opc.tcp://KPC22014549.kongsberg.master.int:53530/OPCUA/SimulationServer", appSettings);
+            //Get list sensors
+            var listSensors = FileManager.DataReading(appSettings.SensorListFilePath);
 
-            opcUaClient.SubscribedMonitoredItems(new List<string> { "ns=3;s=Prosys.Int1" });
+            var opcUaClient = new OpcUaClient(appSettings);
 
-            Thread.Sleep(30000);
+            opcUaClient.SubscribedMonitoredItems(listSensors);
+
+            Thread.Sleep(60000);
 
             opcUaClient.Dispose();
-        }        
+        }
     }
 }

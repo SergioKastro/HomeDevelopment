@@ -17,9 +17,9 @@ namespace Kognifai.OPCUA.Client.Client
         private OpcUaClientSession _sessionClient;
         private List<Subscription> _listSubscriptions;
 
-        public OpcUaClient(string opcServerUrl, AppSettings appSettings)
+        public OpcUaClient(AppSettings appSettings)
         {
-            _config = new OpcUaClientConfiguration(opcServerUrl);
+            _config = new OpcUaClientConfiguration(appSettings.OpcUaServerUrl);
             _listSubscriptions = new List<Subscription>();
             CreateOpcuaSessionAsync().GetAwaiter().GetResult();
             _appSettings = appSettings;
@@ -48,7 +48,7 @@ namespace Kognifai.OPCUA.Client.Client
         {
             var opcSubscription = CreateSubscription();
 
-            var monitoredItemsHandler = new MonitoredItemsHandler(_sessionClient);
+            var monitoredItemsHandler = new MonitoredItemsHandler(_sessionClient, _appSettings);
             var listMonitoredItems = monitoredItemsHandler.CreateListMonitoredItems(listNodeIds);
 
             opcSubscription.AddItems(listMonitoredItems);
@@ -77,7 +77,7 @@ namespace Kognifai.OPCUA.Client.Client
             DisposeSessionClient();
         }
 
-        public void DisposeSessionClient()
+        private void DisposeSessionClient()
         {
             if (_sessionClient != null)
             {
@@ -133,6 +133,6 @@ namespace Kognifai.OPCUA.Client.Client
             }
 
             SysLog.Info($"Unsubscribed from \"{subscription.DisplayName}\".");
-        }        
+        }
     }
 }

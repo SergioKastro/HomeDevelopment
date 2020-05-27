@@ -1,11 +1,11 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-using System.Threading.Tasks;
-using Kognifai.OPCUA.Client.Configuration;
+﻿using Kognifai.OPCUA.Client.Configuration;
 using log4net;
 using Opc.Ua;
 using Opc.Ua.Client;
+using System;
+using System.Collections.Generic;
+using System.Text;
+using System.Threading.Tasks;
 
 namespace Kognifai.OPCUA.Client.Client
 {
@@ -114,7 +114,7 @@ namespace Kognifai.OPCUA.Client.Client
                     Log.Error($"Failed to retrieve node id for item {nodeId}. ", ex);
                 }
 
-            }            
+            }
 
             return browseResults;
         }

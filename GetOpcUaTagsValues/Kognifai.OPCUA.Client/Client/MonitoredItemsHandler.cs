@@ -1,4 +1,6 @@
-﻿using log4net;
+﻿using Kognifai.File;
+using Kognifai.OPCUA.Client.Configuration;
+using log4net;
 using Opc.Ua;
 using Opc.Ua.Client;
 using System;
@@ -11,10 +13,16 @@ namespace Kognifai.OPCUA.Client.Client
     {
         private static readonly ILog SysLog = LogManager.GetLogger(typeof(MonitoredItemsHandler));
         private readonly OpcUaClientSession _session;
+        private readonly string _fileName;
+        private readonly string _directoryPath;
+        private readonly string _header;
 
-        public MonitoredItemsHandler(OpcUaClientSession session)
+        public MonitoredItemsHandler(OpcUaClientSession session, AppSettings _appSettings)
         {
             _session = session;
+            _fileName = _appSettings.PrefixFileName + string.Format("{0:yyyy_MM_dd_HH_mm_ss}", DateTime.Now) + ".csv";
+            _directoryPath = _appSettings.DataFolder;
+            _header = CreateHeaderFile();
         }
 
 
@@ -75,7 +83,7 @@ namespace Kognifai.OPCUA.Client.Client
                 }
             }
 
-            
+
             return items;
         }
 
@@ -94,19 +102,40 @@ namespace Kognifai.OPCUA.Client.Client
 
         private void Item_Notification(MonitoredItem monitoredItem, MonitoredItemNotificationEventArgs e)
         {
+            string message;
 
             foreach (var value in monitoredItem.DequeueValues())
             {
                 if (StatusCode.IsBad(value.StatusCode))
                 {
+                    message = CreateFailureMessageToWriteInResultFile(monitoredItem.DisplayName, value);
                     SysLog.Error($"Bad status code: {value.StatusCode} from server for this nodeId: {monitoredItem.DisplayName}. Please check OPC Server status. ");
                 }
                 else
                 {
-                    SysLog.Info($"Message received in publish mode: {monitoredItem.DisplayName}: { value.Value}, {value.SourceTimestamp}, {value.StatusCode}");
+                    message = CreateSuccessMessageToWriteInResultFile(monitoredItem.DisplayName, value);
+                    SysLog.Info($"Values received in publish mode: {monitoredItem.DisplayName}: { value.Value}, {value.SourceTimestamp}, {value.StatusCode}");
                 }
-            }
 
+                FileManager.WriteToFile(message, _fileName, _directoryPath, _header);
+            }
+        }
+
+        private string CreateSuccessMessageToWriteInResultFile(string monitoredItemName, DataValue value)
+        {
+            return $"{monitoredItemName}  ,\t  { value.Value} ,\t {value.StatusCode} ,\t {value.SourceTimestamp} ,\t . ";
+        }
+
+        private string CreateFailureMessageToWriteInResultFile(string monitoredItemName, DataValue value)
+        {
+            return $"{monitoredItemName}  ,\t  ,\t {value.StatusCode} ,\t {value.SourceTimestamp} ,\t Bad status code: {value.StatusCode} from server for this nodeId: {monitoredItemName}. Please check OPC Server status.";
+        }
+
+        private static string CreateHeaderFile()
+        {
+            string header = "Tagid  ,\t Value ,\t StatusCode ,\t Timestamp ,\t Error messages";
+
+            return header;
         }
 
         private MonitoringFilter CreateMonitoredItemFilter()

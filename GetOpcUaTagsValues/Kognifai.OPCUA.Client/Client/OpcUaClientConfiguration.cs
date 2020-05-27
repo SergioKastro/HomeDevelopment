@@ -21,6 +21,7 @@ namespace Kognifai.OPCUA.Client.Client
         }
 
         private ConfiguredEndpoint _endpoint;
+
         public ConfiguredEndpoint Endpoint
         {
             get
@@ -33,8 +34,8 @@ namespace Kognifai.OPCUA.Client.Client
                 try
                 {
                     var selectedUserTokenType = UserTokenType.Anonymous;
-                    var userName =  string.Empty ;
-                    var password =  string.Empty ;
+                    var userName = string.Empty;
+                    var password = string.Empty;
                     var userAuthentication = new UserAuthentication
                     {
                         ServerUrl = _opcServerUrl,
@@ -54,7 +55,7 @@ namespace Kognifai.OPCUA.Client.Client
 
         public async Task<ApplicationConfiguration> LoadOpcUaConfiguration()
         {
-            if (!File.Exists(Constants.ConfigFilePath))
+            if (!System.IO.File.Exists(Constants.ConfigFilePath))
                 throw new FileNotFoundException($"Failed to locate application configuration. Looking fo file: {Constants.ConfigFilePath}");
             return await ApplicationInstance.LoadAppConfig(false, Constants.ConfigFilePath, ApplicationType.ClientAndServer, typeof(ApplicationConfiguration), false);
         }
@@ -187,6 +188,7 @@ namespace Kognifai.OPCUA.Client.Client
 
             return securityMode;
         }
+
         private class UserAuthentication
         {
             public UserTokenType SelectedUserTokenType { get; set; }

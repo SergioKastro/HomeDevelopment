@@ -213,7 +213,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Client\TimeSeriesMessageHandler.cs" />
+    <Compile Include="Client\MonitoredItemsHandler.cs" />
     <Compile Include="Client\OpcUaClient.cs" />
     <Compile Include="Client\OpcUaClientConfiguration.cs" />
     <Compile Include="Client\OpcUaClientSession.cs" />
@@ -240,6 +240,12 @@
     <Content Include="OPCUAConfiguration.xml">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Kognifai.File\Kognifai.File.csproj">
+      <Project>{896945D1-801A-45B9-926E-7AE2E07153CF}</Project>
+      <Name>Kognifai.File</Name>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

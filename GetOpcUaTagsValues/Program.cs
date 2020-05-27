@@ -12,7 +12,7 @@ namespace GetOpcUaTagsValues
         /// <summary>
         /// The main entry point for the application.
         /// </summary>
-       [STAThread]
+        [STAThread]
         static void Main()
         {
             ServiceBase[] ServicesToRun;
