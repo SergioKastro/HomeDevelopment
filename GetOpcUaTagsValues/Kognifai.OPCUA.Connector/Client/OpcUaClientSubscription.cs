@@ -21,7 +21,7 @@ namespace Kognifai.OPCUA.Connector.Client
 
         public Subscription CreateSubscription(OpcUaClientSession session)
         {
-            SysLog.Info("Creating new subscription");
+            SysLog.Info("Creating new subscription ...");
 
             if (!session.IsConnected)
             {
@@ -57,7 +57,7 @@ namespace Kognifai.OPCUA.Connector.Client
             }
 
 
-            SysLog.Info("Created new subscription");
+            SysLog.Info("Created new subscription.");
             return _subscription;
         }
 
@@ -81,7 +81,7 @@ namespace Kognifai.OPCUA.Connector.Client
             }
             catch (Exception ex)
             {
-                const string message = "Error in Subscription handler";
+                const string message = "Error in Subscription handler.";
 
                 if (SysLog.IsDebugEnabled)
                     SysLog.Error(message, ex);

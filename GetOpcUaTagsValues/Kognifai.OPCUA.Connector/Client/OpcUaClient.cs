@@ -16,20 +16,31 @@ namespace Kognifai.OPCUA.Connector.Client
 
         private readonly OpcUaClientConfiguration _config;
         private readonly AppSettings _appSettings;
+        private readonly Action<MonitoredItem, MonitoredItemNotificationEventArgs> _callback;
+        private List<MonitoredItem> _listMonitoredItemsSubscribedPerSubscription;
+
         private OpcUaClientSession _sessionClient;
         private Subscription _subscription;
         private Timer _checkConnectionTimer;
 
-        public OpcUaClient(AppSettings appSettings)
+
+        public OpcUaClient(AppSettings appSettings, Action<MonitoredItem, MonitoredItemNotificationEventArgs> callback)
         {
             _appSettings = appSettings;
-
+            _callback = callback;
+            _listMonitoredItemsSubscribedPerSubscription = new List<MonitoredItem>();
             _config = new OpcUaClientConfiguration(appSettings.OpcUaServerUrl);
+
+            InitOpcUaClient();
+        }
+
+        private void InitOpcUaClient()
+        {
             CreateOpcuaSessionAsync().GetAwaiter().GetResult();
             CreateSubscription();
         }
 
-        public async Task CreateOpcuaSessionAsync()
+        private async Task CreateOpcuaSessionAsync()
         {
             try
             {
@@ -64,23 +75,72 @@ namespace Kognifai.OPCUA.Connector.Client
                 {
                     monitoredItem.Notification += callback.Invoke;
                 }
-                _subscription.AddItems(items);
-                _subscription.ApplyChanges();
+
+                try
+                {
+                    _subscription.AddItems(items);
+                    _subscription.ApplyChanges();
+                }
+                catch (Exception ex)
+                {
+                    SysLog.Error("Unexpected error.", ex);
+                    return;
+                }
+
+                var currentListMonitoredItemsSubscribed = CreateCurrentListMonitoredItemsSubscribed(items);
+
+                _listMonitoredItemsSubscribedPerSubscription = currentListMonitoredItemsSubscribed;
             }
         }
 
-        public void UnsubscribeMonitorItems(ICollection<MonitoredItem> items, Action<MonitoredItem, MonitoredItemNotificationEventArgs> callback)
+        private List<MonitoredItem> CreateCurrentListMonitoredItemsSubscribed(IEnumerable<MonitoredItem> monitoredItems)
         {
-            if (items != null && items.Any())
+            var flattenList = _listMonitoredItemsSubscribedPerSubscription ?? new List<MonitoredItem>();
+
+            foreach (var monitoredItem in monitoredItems)
             {
-                foreach (var monitoredItem in items)
+                if (!flattenList.Contains(monitoredItem))
                 {
-                    monitoredItem.Notification -= callback.Invoke;
+                    flattenList.Add(monitoredItem);
                 }
-                _subscription.RemoveItems(items);
+            }
+
+            return flattenList;
+        }
+
+        public void UnsubscribeMonitorItems(IReadOnlyCollection<MonitoredItem> monitoredItems, Action<MonitoredItem, MonitoredItemNotificationEventArgs> callback)
+        {
+            if (monitoredItems == null || !monitoredItems.Any())
+            {
+                SysLog.Warn("There are not monitoredItems to be removed from subscription.");
+                return;
+            }
+
+            if (_subscription == null)
+            {
+                SysLog.Warn("Could not remove any monitoredItem because there is not subscription.");
+                return;
+            }
+
+            foreach(var monitoredItem in monitoredItems)
+            {
+                monitoredItem.Notification -= callback.Invoke;
+            }
+
+            try
+            {
+                _subscription.RemoveItems(monitoredItems);
                 _subscription.ApplyChanges();
             }
+            catch (Exception ex)
+            {
+                SysLog.Error("Unexpected error.", ex);
+                return;
+            }
+
+            _listMonitoredItemsSubscribedPerSubscription = null;
         }
+
 
         private void CreateSubscription()
         {
@@ -99,13 +159,21 @@ namespace Kognifai.OPCUA.Connector.Client
             DisposeSessionClient();
         }
 
-        public void DisposeSessionClient()
+        private void DisposeSessionClient()
         {
             if (_sessionClient != null)
             {
                 SysLog.Info("Disconnecting from server ...");
 
-                //Removing all the subscriptions
+                //Removing current monitoredItems subscribed
+                if (_listMonitoredItemsSubscribedPerSubscription != null)
+                {
+                    SysLog.Info($"Removing {_listMonitoredItemsSubscribedPerSubscription.Count} monitoredItems from  subscription: \"{_subscription.DisplayName}\" ...");
+                    UnsubscribeMonitorItems(_listMonitoredItemsSubscribedPerSubscription, _callback);
+                    SysLog.Info($"Removed ALL monitoredItems from  subscription: \"{_subscription.DisplayName}\".");
+                }
+
+                //Removing active subscription
                 if (_subscription != null)
                 {
                     Unsubscribe(_subscription);
@@ -116,11 +184,15 @@ namespace Kognifai.OPCUA.Connector.Client
 
                 _sessionClient.Dispose();
 
+                //Stop Timer to check connection
+                _checkConnectionTimer.Elapsed -= OnCheckConnectionTimerOnElapsedCheckConnection;
+                _checkConnectionTimer.Stop();
+
                 SysLog.Info("Disconnected from server.");
             }
         }
 
-        public void Unsubscribe(Subscription subscription)
+        private void Unsubscribe(Subscription subscription)
         {
             if (subscription == null)
                 return;
@@ -176,8 +248,7 @@ namespace Kognifai.OPCUA.Connector.Client
                 SysLog.Warn("Client session disconnected. Trying to resubscribe.");
 
                 this.Dispose(true);
-                CreateOpcuaSessionAsync().GetAwaiter().GetResult();
-                CreateSubscription();
+                InitOpcUaClient();
                 Reconnected = _sessionClient.IsConnected;
             }
             else
@@ -188,6 +259,6 @@ namespace Kognifai.OPCUA.Connector.Client
 
         public bool Reconnected { get; internal set; }
 
-       
+
     }
 }

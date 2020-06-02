@@ -14,12 +14,11 @@ namespace Kognifai.WindowsService.TopShelf
 
 
         private readonly Timer _timer;
-        private readonly OpcUaProcessor _processor;
+        private OpcUaProcessor _processor;
 
         public OpcUaProcessorTopShelfWrapper(AppSettings appSettings)
         {
             _appSettings = appSettings;
-            _processor = new OpcUaProcessor(_appSettings);
 
             _timer = new Timer
             {
@@ -35,6 +34,7 @@ namespace Kognifai.WindowsService.TopShelf
             SysLog.Info("Starting the OPCUA Processor.");
             _timer.Stop();
 
+            _processor = new OpcUaProcessor(_appSettings);
             _processor.Start();
 
             //Set the correct Timer interval after the first time runs

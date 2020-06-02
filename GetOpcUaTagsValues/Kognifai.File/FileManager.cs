@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using log4net;
 
 namespace Kognifai.File
@@ -54,22 +55,28 @@ namespace Kognifai.File
             {
                 if (!System.IO.File.Exists(filepath))
                     // Create a file to write to.   
-                    using (var sw = System.IO.File.CreateText(filepath))
+                    using (var streamWriter = System.IO.File.CreateText(filepath))
                     {
-                        if (!string.IsNullOrEmpty(header)) sw.WriteLine(header);
+                        if (!string.IsNullOrEmpty(header))
+                        {
+                            streamWriter.WriteLine(header);
+                        }
                     }
 
-                using (var sw = System.IO.File.AppendText(filepath))
+                using (var streamWriter = System.IO.File.AppendText(filepath))
                 {
-                    sw.WriteLine(message);
+                    streamWriter.WriteLine(message);
                 }
+
+                //Remove any empty line from file
+                System.IO.File.WriteAllLines(filepath, System.IO.File.ReadAllLines(filepath).Where(l => !string.IsNullOrWhiteSpace(l)));
             }
             catch (Exception ex)
             {
                 SysLog.Error($"Unable to write data to the file {fileName}. ", ex);
             }
 
-            SysLog.Debug("Writing completed");
+            SysLog.Debug("Writing data in result file completed.");
         }
 
         public static string GetHeaderForFile()

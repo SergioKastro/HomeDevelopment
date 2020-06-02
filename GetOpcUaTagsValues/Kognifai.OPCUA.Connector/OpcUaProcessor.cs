@@ -21,14 +21,14 @@ namespace Kognifai.OPCUA.Connector
 
         private readonly AppSettings _appSettings;
         private readonly IOpcUaClient _client;
-        private readonly ConcurrentDictionary<NodeId,MonitoredItem> _queue = new ConcurrentDictionary<NodeId,MonitoredItem>();
+        private readonly ConcurrentDictionary<NodeId, MonitoredItem> _queue = new ConcurrentDictionary<NodeId, MonitoredItem>();
         private readonly Dictionary<NodeId, (MonitoredItem Item, MonitorItemStatus Status)> _transmittedItems = new Dictionary<NodeId, (MonitoredItem Item, MonitorItemStatus Status)>();
         private readonly TimeSpan _monitoredItemsBatchIntervalMs;
-        private readonly int _monitoredItemsBatchSize;
-        
+        private readonly int _maxMonitoredItemsBatchSize;
+
         private string _fileName;
         private bool _started;
-        private int _totalItemsToAddPerIteration = 0;
+        private int _totalItemsToAddInCurrentIteration = 0;
         private CancellationTokenSource _cancellationTokenSource;
 
         private enum MonitorItemStatus
@@ -40,29 +40,40 @@ namespace Kognifai.OPCUA.Connector
         public OpcUaProcessor(AppSettings appSettings)
         {
             this._appSettings = appSettings;
-            this._client = new OpcUaClient(appSettings);
-            this._monitoredItemsBatchSize = appSettings.MonitoredItemsBatchSize;
+            this._client = new OpcUaClient(appSettings, this.Notify);
+            this._maxMonitoredItemsBatchSize = appSettings.MonitoredItemsBatchSize;
             this._monitoredItemsBatchIntervalMs = TimeSpan.FromMilliseconds(appSettings.MonitoredItemsBatchIntervalMs);
         }
 
         public void Start()
         {
-            if (!this._started) 
+            if (!this._started)
             {
                 this._fileName = this._appSettings.PrefixFileName + $"{DateTime.Now:yyyy_MM_dd_HH_mm_ss}" + ".csv";
                 this._cancellationTokenSource = new CancellationTokenSource();
                 var listSensors = FileManager.DataReading(this._appSettings.SensorListFilePath);
-                var items = this._client.CreateMonitoredItems(listSensors);
 
-                foreach (var transmittedItem in items)
+                lock (LockObject)
                 {
-                    this._transmittedItems[transmittedItem.StartNodeId] = (transmittedItem, MonitorItemStatus.Pending);
+                    if (_client != null)
+                    {
+                        var items = _client.CreateMonitoredItems(listSensors);
+
+                        foreach (var transmittedItem in items)
+                        {
+
+                            this._transmittedItems[transmittedItem.StartNodeId] = (transmittedItem, MonitorItemStatus.Pending);
+                        }
+                    }
                 }
 
                 this._started = true;
 
                 // initial items to add.
-                this._totalItemsToAddPerIteration = this._monitoredItemsBatchSize;
+                lock (LockObject)
+                {
+                    this._totalItemsToAddInCurrentIteration = this._maxMonitoredItemsBatchSize;
+                }
 
 
                 Task.WhenAny(
@@ -70,6 +81,8 @@ namespace Kognifai.OPCUA.Connector
                         this.ProcessTask(this._cancellationTokenSource.Token))
                     .Wait();
 
+                //When completed we stop the whole process
+                this.Stop();
                 this._started = false;
             }
         }
@@ -88,6 +101,8 @@ namespace Kognifai.OPCUA.Connector
 
                 //Cancel all the tasks
                 this._cancellationTokenSource.Cancel();
+
+                Logging.Info($"Next execution time: {DateTime.Now.AddMinutes(_appSettings.ServiceIntervalMinutes)}.");
             }
         }
 
@@ -117,10 +132,12 @@ namespace Kognifai.OPCUA.Connector
             {
                 lock (LockObject)
                 {
-                    this._totalItemsToAddPerIteration += this.Monitor();
+                    this._totalItemsToAddInCurrentIteration += this.Monitor();
                 }
 
-                await Task.Delay(5000, cancellationToken);
+                LogNumberOfItemsProcessed();
+
+                await Task.Delay(_appSettings.SubscriptionPublishIntervalMs, cancellationToken);
 
                 if (this.IsCompleted)
                 {
@@ -129,25 +146,34 @@ namespace Kognifai.OPCUA.Connector
             }
         }
 
+        private void LogNumberOfItemsProcessed()
+        {
+            var totalProcessed = this._transmittedItems.Count(i => i.Value.Status == MonitorItemStatus.Completed);
+            Logging.Info($"Total Items Processed: {totalProcessed}.");
+            Logging.Info("=========================================");
+        }
+
         private async Task AddItemsToSubscriptionTask(CancellationToken cancellationToken)
         {
             while (!cancellationToken.IsCancellationRequested)
             {
                 lock (LockObject)
                 {
-                    var firstSeed = this._transmittedItems
+                    var batchMonitoredItemsToAddInSubscription = this._transmittedItems
                         .Where(i => i.Value.Status == MonitorItemStatus.Pending)
                         .Select(i => i.Value.Item)
-                        .Take(this._totalItemsToAddPerIteration)
+                        .Take(this._totalItemsToAddInCurrentIteration)
                         .ToList();
 
-                    this._client.SubscribedMonitoredItems(firstSeed, this.Notify);
+                    this._client.SubscribedMonitoredItems(batchMonitoredItemsToAddInSubscription, this.Notify);
 
-                    Logging.Debug($"Subscribe: {firstSeed.Count} items.");
+                    Logging.Debug($"Subscribe: {batchMonitoredItemsToAddInSubscription.Count} items.");
 
-                    this._totalItemsToAddPerIteration = 0;
+                    this._totalItemsToAddInCurrentIteration = 0;
                 }
 
+                //We delay here to have control how many items we are adding per interval:
+                //_totalItemsToAddPerIteration per _monitoredItemsBatchIntervalMs (100 items per minute)
                 await Task.Delay(this._monitoredItemsBatchIntervalMs, cancellationToken);
 
                 if (this.IsCompleted)
@@ -170,10 +196,8 @@ namespace Kognifai.OPCUA.Connector
         private int Monitor()
         {
             var itemsToBeUnsubscribed = new List<MonitoredItem>();
-
             var currentItemsInQueue = this._queue.Count;
-            var message = string.Empty;
-
+            var messageToWriteInResultFile = string.Empty;
 
             foreach (var monitoredItem in _queue)
             {
@@ -184,11 +208,10 @@ namespace Kognifai.OPCUA.Connector
                     {
                         if (StatusCode.IsGood(dequeuedValue.StatusCode))
                         {
-                            message += CreateSuccessMessageToWriteInResultFile(monitoredItem.Value.DisplayName, dequeuedValue);
+                            messageToWriteInResultFile += CreateSuccessMessageToWriteInResultFile(monitoredItem.Value.DisplayName, dequeuedValue);
 
                             this._transmittedItems[monitoredItem.Key] = (monitoredItem.Value, MonitorItemStatus.Completed); //marked as Processed.
                             itemsToBeUnsubscribed.Add(monitoredItem.Value);
-
                         }
                         else
                         {
@@ -205,37 +228,33 @@ namespace Kognifai.OPCUA.Connector
                 }
             }
 
-            if (!string.IsNullOrEmpty(message))
+            if (!string.IsNullOrEmpty(messageToWriteInResultFile))
             {
-                FileManager.WriteToFile(message, _fileName, _appSettings.DataFolder, FileManager.GetHeaderForFile());
+                FileManager.WriteToFile(messageToWriteInResultFile, _fileName, _appSettings.DataFolder, FileManager.GetHeaderForFile());
             }
 
             this._client.UnsubscribeMonitorItems(itemsToBeUnsubscribed, this.Notify);
+            Logging.Info($"Unsubscribed: {itemsToBeUnsubscribed.Count} items.");
 
-            Logging.Debug($"Unsubscribed: {itemsToBeUnsubscribed.Count} items.");
 
-            var totalProcessed = this._transmittedItems.Count(i => i.Value.Status == MonitorItemStatus.Completed);
+            var numberOfItemsToSubscribe = SetTopNumberOfItemsToSubscribe(itemsToBeUnsubscribed);
 
-            Logging.Debug($"Total Items Processed: {totalProcessed}.");
-
-            var numberOfToSubscribe = SetTopNumberOfItemsToSubscribe(itemsToBeUnsubscribed);
-
-            return numberOfToSubscribe;
+            return numberOfItemsToSubscribe;
         }
 
         private int SetTopNumberOfItemsToSubscribe(IReadOnlyCollection<MonitoredItem> itemsUnsubscribed)
         {
             var numberOfToSubscribe = itemsUnsubscribed.Count;
 
-            if (numberOfToSubscribe > this._monitoredItemsBatchSize )
+            if (numberOfToSubscribe > this._maxMonitoredItemsBatchSize)
             {
-                numberOfToSubscribe = this._monitoredItemsBatchSize;
+                numberOfToSubscribe = this._maxMonitoredItemsBatchSize;
             }
 
             if (numberOfToSubscribe == 0 && _client.Reconnected)
             {
-                this._totalItemsToAddPerIteration = 0;
-                numberOfToSubscribe = this._monitoredItemsBatchSize;
+                this._totalItemsToAddInCurrentIteration = 0;
+                numberOfToSubscribe = this._maxMonitoredItemsBatchSize;
             }
 
             return numberOfToSubscribe;
@@ -243,7 +262,7 @@ namespace Kognifai.OPCUA.Connector
 
         private static string CreateSuccessMessageToWriteInResultFile(string monitoredItemName, DataValue value)
         {
-            var message =  $"{monitoredItemName}  ,\t  { value.Value} ,\t {value.StatusCode} ,\t {value.SourceTimestamp} . \n ";
+            var message = $"{monitoredItemName}  ,\t  { value.Value} ,\t {value.StatusCode} ,\t {value.SourceTimestamp} . \n ";
 
             Logging.Debug($"Read value for: {message}");
 
@@ -252,8 +271,8 @@ namespace Kognifai.OPCUA.Connector
 
         private static void LogFailureMessage(string monitoredItemName, DataValue value)
         {
-            Logging.Warn(
-                $"{monitoredItemName}  ,\t  ,\t {value.StatusCode} ,\t {value.SourceTimestamp} ,\t Bad status code: {value.StatusCode} from server for this nodeId: {monitoredItemName}. Please check OPC Server status.");
+            Logging.Error(
+                $"{monitoredItemName}  ,\t  {value.StatusCode} ,\t {value.SourceTimestamp} ,\t Bad status code: {value.StatusCode} from server for this nodeId: {monitoredItemName}. Please check OPC Server status.");
 
         }
     }
