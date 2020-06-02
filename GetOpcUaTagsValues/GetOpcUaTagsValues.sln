@@ -3,8 +3,6 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 16
 VisualStudioVersion = 16.0.30011.22
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GetOpcUaTagsValuesService", "GetOpcUaTagsValuesService.csproj", "{D907D3D8-AB68-4CF7-973E-60D4F18C988F}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Kognifai.File", "Kognifai.File\Kognifai.File.csproj", "{896945D1-801A-45B9-926E-7AE2E07153CF}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Kognifai.WindowsService.TopShelf", "Kognifai.WindowsService.TopShelf\Kognifai.WindowsService.TopShelf.csproj", "{C62AB38D-6968-48F5-B102-CACCEE9AE49A}"
@@ -17,10 +15,6 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{D907D3D8-AB68-4CF7-973E-60D4F18C988F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{D907D3D8-AB68-4CF7-973E-60D4F18C988F}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{D907D3D8-AB68-4CF7-973E-60D4F18C988F}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{D907D3D8-AB68-4CF7-973E-60D4F18C988F}.Release|Any CPU.Build.0 = Release|Any CPU
 		{896945D1-801A-45B9-926E-7AE2E07153CF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{896945D1-801A-45B9-926E-7AE2E07153CF}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{896945D1-801A-45B9-926E-7AE2E07153CF}.Release|Any CPU.ActiveCfg = Release|Any CPU
