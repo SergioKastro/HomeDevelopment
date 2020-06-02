@@ -1,20 +1,19 @@
-﻿using Kognifai.OPCUA.Client.Configuration;
+﻿using System;
+using System.Text;
+using Kognifai.OPCUA.Connector.Configuration;
 using log4net;
 using Opc.Ua;
 using Opc.Ua.Client;
-using System;
-using System.Text;
 
-namespace Kognifai.OPCUA.Client.Client
+namespace Kognifai.OPCUA.Connector.Client
 {
     public class OpcUaClientSubscription
     {
         private Subscription _subscription;
-        private static readonly ILog SysLog = LogManager.GetLogger(typeof(OpcUaClient));
+        private static readonly ILog SysLog = LogManager.GetLogger(typeof(OpcUaClientSubscription));
         private readonly AppSettings _appSettings;
         private bool IsSubscriptionTypePublishing { get; set; }
 
-        public bool IsMatrikonServer { get; set; }
         public OpcUaClientSubscription(AppSettings appSettings)
         {
             _appSettings = appSettings;
@@ -23,6 +22,12 @@ namespace Kognifai.OPCUA.Client.Client
         public Subscription CreateSubscription(OpcUaClientSession session)
         {
             SysLog.Info("Creating new subscription");
+
+            if (!session.IsConnected)
+            {
+                SysLog.Error("Could not create subscription because opcua client session is null. Please check the OPCUA Server status");
+                return null;
+            }
 
             IsSubscriptionTypePublishing = true;
 

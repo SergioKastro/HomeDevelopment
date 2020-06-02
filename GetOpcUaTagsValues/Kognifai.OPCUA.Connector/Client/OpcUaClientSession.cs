@@ -1,13 +1,13 @@
-﻿using Kognifai.OPCUA.Client.Configuration;
-using log4net;
-using Opc.Ua;
-using Opc.Ua.Client;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Text;
 using System.Threading.Tasks;
+using Kognifai.OPCUA.Connector.Configuration;
+using log4net;
+using Opc.Ua;
+using Opc.Ua.Client;
 
-namespace Kognifai.OPCUA.Client.Client
+namespace Kognifai.OPCUA.Connector.Client
 {
     public sealed class OpcUaClientSession
     {
@@ -18,7 +18,7 @@ namespace Kognifai.OPCUA.Client.Client
 
         public async Task CreateSessionAsync(OpcUaClientConfiguration config)
         {
-            Log.Info("Creating the opcua client session.");
+            Log.Info("Creating the Opcua client session.");
             try
             {
                 var endpoint = config.Endpoint;
@@ -34,7 +34,7 @@ namespace Kognifai.OPCUA.Client.Client
 
                     var identity = GetUserIdentity(endpoint);
                     _session = await Session.Create(appConfig, endpoint, true, false, Constants.DefaultSessionName, Constants.DefaultSessionTimeoutMs, identity, null);
-                    Log.Info("opcua client session successfully created");
+                    Log.Info("OpcUa client session successfully created");
 
                 }
                 else

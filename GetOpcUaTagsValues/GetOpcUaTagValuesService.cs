@@ -1,61 +1,95 @@
-﻿using Kognifai.File;
-using log4net;
+﻿using log4net;
 using System;
 using System.Runtime.InteropServices;
 using System.ServiceProcess;
 using System.Timers;
+using Kognifai.OPCUA.Connector.Interfaces;
 
 namespace GetOpcUaTagsValues
 {
     public partial class GetOpcUaTagValuesService : ServiceBase
     {
-        readonly Timer timer = new Timer();
+        private readonly IOpcUaProcessor _opcUaProcessor;
         private static readonly ILog SysLog = LogManager.GetLogger(typeof(GetOpcUaTagValuesService));
-        private readonly string fileName = "Kognifai.TagsData.ServiceLog_" + DateTime.Now.Date.ToShortDateString().Replace('/', '_') + ".csv";
 
-        public GetOpcUaTagValuesService()
+        private readonly Timer _timer;
+        private DateTime _scheduleTime;
+
+        public GetOpcUaTagValuesService(IOpcUaProcessor opcUaProcessor)
         {
             InitializeComponent();
+            _opcUaProcessor = opcUaProcessor;
+
+            _timer = new Timer();
+            _scheduleTime = DateTime.Today.AddDays(1).AddHours(12).AddMinutes(5); // Schedule to run once a day at 7:00 a.m.
+            
         }
 
         protected override void OnStart(string[] args)
         {
-            // Update the service state to Start Pending.
-            ServiceStatus serviceStatus = new ServiceStatus
+            try
             {
-                dwCurrentState = ServiceState.SERVICE_START_PENDING,
-                dwWaitHint = 100000
-            };
-            SetServiceStatus(ServiceHandle, ref serviceStatus);
+                SysLog.Info("OPCUA GetTags windows service starting ...");
 
-            //Here is the main task for my Service: We will call here our OPCUA Client
+                // Update the service state to Start Pending.
+                var serviceStatus = new ServiceStatus
+                {
+                    dwCurrentState = ServiceState.SERVICE_START_PENDING,
+                    dwWaitHint = 100000
+                };
+                SetServiceStatus(ServiceHandle, ref serviceStatus);
 
-            FileManager.WriteToFile("Service is started at " + DateTime.Now, fileName);
-            timer.Elapsed += new ElapsedEventHandler(OnElapsedTime);
-            timer.Interval = 5000; //number in miliseconds  
-            timer.Enabled = true;
+                //Here is the main task for my Service: We will call here our OPCUA Client
+                _timer.Enabled = true;
+                _timer.Interval = _scheduleTime.Subtract(DateTime.Now).TotalSeconds * 1000;
+                _timer.Elapsed += OnElapsedTime;
+                _timer.Start();
+                
 
-            // Update the service state to Running.
-            serviceStatus.dwCurrentState = ServiceState.SERVICE_RUNNING;
-            SetServiceStatus(ServiceHandle, ref serviceStatus);
+                // Update the service state to Running.
+                serviceStatus.dwCurrentState = ServiceState.SERVICE_RUNNING;
+                SetServiceStatus(ServiceHandle, ref serviceStatus);
+
+
+                SysLog.Info("OPCUA GetTags windows service started.");
+            }
+            catch (Exception ex)
+            {
+                SysLog.Error("Failed to start OPCUA GetTags windows service.", ex);
+                ExitCode = 1;
+                Stop();
+            }
         }
 
         protected override void OnStop()
         {
-            // Update the service state to Stop Pending.
-            ServiceStatus serviceStatus = new ServiceStatus
+            try
             {
-                dwCurrentState = ServiceState.SERVICE_STOP_PENDING,
-                dwWaitHint = 100000
-            };
-            SetServiceStatus(ServiceHandle, ref serviceStatus);
+                SysLog.Info("OPCUA GetTags windows service stopping ...");
+                // Update the service state to Stop Pending.
+                var serviceStatus = new ServiceStatus
+                {
+                    dwCurrentState = ServiceState.SERVICE_STOP_PENDING,
+                    dwWaitHint = 100000
+                };
+                SetServiceStatus(ServiceHandle, ref serviceStatus);
 
-            FileManager.WriteToFile("Service is stopped at " + DateTime.Now, fileName);
+                //Stop the task
+                _timer.Enabled = false;
+                _opcUaProcessor.Stop();
 
 
-            // Update the service state to Stopped.
-            serviceStatus.dwCurrentState = ServiceState.SERVICE_STOPPED;
-            SetServiceStatus(ServiceHandle, ref serviceStatus);
+                // Update the service state to Stopped.
+                serviceStatus.dwCurrentState = ServiceState.SERVICE_STOPPED;
+                SetServiceStatus(ServiceHandle, ref serviceStatus);
+                SysLog.Info("OPCUA GetTags windows service stopped.");
+            }
+            catch (Exception ex)
+            {
+                SysLog.Error("Failed to stop OPCUA GetTags windows service.", ex);
+                this.ExitCode = 1;
+            }
+
         }
 
         protected override void OnShutdown()
@@ -65,7 +99,15 @@ namespace GetOpcUaTagsValues
 
         private void OnElapsedTime(object source, ElapsedEventArgs e)
         {
-            FileManager.WriteToFile("Service is recall at " + DateTime.Now, fileName);
+            // 1. Process Schedule Task
+            _opcUaProcessor.Start();
+
+
+            // 2. If tick for the first time, reset next run to every 24 hours
+            if (_timer.Interval != 24 * 60 * 60 * 1000)
+            {
+                _timer.Interval = 24 * 60 * 60 * 1000;
+            }
         }
 
 

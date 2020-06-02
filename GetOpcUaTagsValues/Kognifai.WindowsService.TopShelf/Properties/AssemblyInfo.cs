@@ -1,14 +1,15 @@
 ﻿using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
 // General Information about an assembly is controlled through the following
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
-[assembly: AssemblyTitle("Kognifai.OPCUA.Client")]
+[assembly: AssemblyTitle("Kognifai.WindowsService.TopShelf")]
 [assembly: AssemblyDescription("")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("")]
-[assembly: AssemblyProduct("Kognifai.OPCUA.Client")]
+[assembly: AssemblyProduct("Kognifai.WindowsService.TopShelf")]
 [assembly: AssemblyCopyright("Copyright ©  2020")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
@@ -19,7 +20,7 @@ using System.Runtime.InteropServices;
 [assembly: ComVisible(false)]
 
 // The following GUID is for the ID of the typelib if this project is exposed to COM
-[assembly: Guid("7fb73d2c-7f07-4452-b8d1-992e9d8e5eb4")]
+[assembly: Guid("c62ab38d-6968-48f5-b102-caccee9ae49a")]
 
 // Version information for an assembly consists of the following four values:
 //

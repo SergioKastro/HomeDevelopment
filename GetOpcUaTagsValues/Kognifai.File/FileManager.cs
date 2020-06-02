@@ -1,8 +1,7 @@
-﻿using log4net;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
-
+using log4net;
 
 namespace Kognifai.File
 {
@@ -13,14 +12,15 @@ namespace Kognifai.File
 
         public static List<string> DataReading(string filePath)
         {
-            List<string> result = new List<string>(); // A list of strings 
+            var result = new List<string>(); // A list of strings 
 
             try
             {
                 // Create a stream reader object to read a text file.
-                using (StreamReader reader = new StreamReader(new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read)))
+                using (var reader =
+                    new StreamReader(new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read)))
                 {
-                    string line = string.Empty;
+                    string line;
 
                     // While there are lines in the file, read a line into the line variable.
                     while ((line = reader.ReadLine()) != null)
@@ -31,8 +31,8 @@ namespace Kognifai.File
                             result.Add(line.Trim());
                         }
                     }
+                        
                 }
-
             }
             catch (Exception ex)
             {
@@ -43,40 +43,25 @@ namespace Kognifai.File
             return result;
         }
 
-        public static void WriteToFile(string Message, string fileName, string directoryPath = null, string header = null)
+        public static void WriteToFile(string message, string fileName, string directoryPath = null, string header = null)
         {
-            if (string.IsNullOrEmpty(directoryPath))
-            {
-                directoryPath = "C:\\Logs";
-            }
+            if (string.IsNullOrEmpty(directoryPath)) directoryPath = "C:\\Logs";
 
-            if (!Directory.Exists(directoryPath))
-            {
-                Directory.CreateDirectory(directoryPath);
-            }
+            if (!Directory.Exists(directoryPath)) Directory.CreateDirectory(directoryPath);
 
-            string filepath = directoryPath + "\\" + fileName;
+            var filepath = directoryPath + "\\" + fileName;
             try
             {
                 if (!System.IO.File.Exists(filepath))
-                {
                     // Create a file to write to.   
-                    using (StreamWriter sw = System.IO.File.CreateText(filepath))
+                    using (var sw = System.IO.File.CreateText(filepath))
                     {
-                        if (!string.IsNullOrEmpty(header))
-                        {
-                            sw.WriteLine(header);
-                        }
+                        if (!string.IsNullOrEmpty(header)) sw.WriteLine(header);
+                    }
 
-                        sw.WriteLine(Message);
-                    }
-                }
-                else
+                using (var sw = System.IO.File.AppendText(filepath))
                 {
-                    using (StreamWriter sw = System.IO.File.AppendText(filepath))
-                    {
-                        sw.WriteLine(Message);
-                    }
+                    sw.WriteLine(message);
                 }
             }
             catch (Exception ex)
@@ -87,9 +72,9 @@ namespace Kognifai.File
             SysLog.Debug("Writing completed");
         }
 
-        private static string CreateHeaderFile()
+        public static string GetHeaderForFile()
         {
-            string header = "Tagid  ,\t Value ,\t StatusCode ,\t Timestamp ,\t Error messages";
+            const string header = "TagId  ,\t Value ,\t StatusCode ,\t Timestamp";
 
             return header;
         }

@@ -1,28 +1,24 @@
-﻿using Kognifai.File;
-using Kognifai.OPCUA.Client.Configuration;
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using Kognifai.OPCUA.Connector.Configuration;
 using log4net;
 using Opc.Ua;
 using Opc.Ua.Client;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 
-namespace Kognifai.OPCUA.Client.Client
+namespace Kognifai.OPCUA.Connector.Client
 {
     public class MonitoredItemsHandler
     {
         private static readonly ILog SysLog = LogManager.GetLogger(typeof(MonitoredItemsHandler));
         private readonly OpcUaClientSession _session;
-        private readonly string _fileName;
-        private readonly string _directoryPath;
-        private readonly string _header;
+        private readonly AppSettings _appSettings;
 
-        public MonitoredItemsHandler(OpcUaClientSession session, AppSettings _appSettings)
+
+        public MonitoredItemsHandler(OpcUaClientSession session, AppSettings appSettings)
         {
             _session = session;
-            _fileName = _appSettings.PrefixFileName + string.Format("{0:yyyy_MM_dd_HH_mm_ss}", DateTime.Now) + ".csv";
-            _directoryPath = _appSettings.DataFolder;
-            _header = CreateHeaderFile();
+            _appSettings = appSettings;
         }
 
 
@@ -41,7 +37,8 @@ namespace Kognifai.OPCUA.Client.Client
             return PopulateListMonitoredItemsFromBrowsePathResultList(listNodeIds, browseResults);
         }
 
-        private List<MonitoredItem> PopulateListMonitoredItemsFromBrowsePathResultList(IReadOnlyList<string> sensors, BrowsePathResultCollection browseResults)
+      
+    private List<MonitoredItem> PopulateListMonitoredItemsFromBrowsePathResultList(IReadOnlyList<string> sensors, BrowsePathResultCollection browseResults)
         {
             var items = new List<MonitoredItem>();
 
@@ -65,15 +62,13 @@ namespace Kognifai.OPCUA.Client.Client
                         DisplayName = sensor,
                         NodeClass = NodeClass.Variable,
                         AttributeId = Attributes.Value,
-                        SamplingInterval = 5000,
+                        SamplingInterval = _appSettings.DefaultSamplingIntervalMs,
                         MonitoringMode = MonitoringMode.Reporting,
                         //For Polling and for MatrikonServer (Shell) we will use the default queue size, which is 0 (and it means that we will get just the latest value)
                         QueueSize = 0,
                         Filter = CreateMonitoredItemFilter()
 
                     };
-
-                    item.Notification += Item_Notification;
 
                     items.Add(item);
                 }
@@ -100,45 +95,7 @@ namespace Kognifai.OPCUA.Client.Client
             return browseRes;
         }
 
-        private void Item_Notification(MonitoredItem monitoredItem, MonitoredItemNotificationEventArgs e)
-        {
-            string message;
-
-            foreach (var value in monitoredItem.DequeueValues())
-            {
-                if (StatusCode.IsBad(value.StatusCode))
-                {
-                    message = CreateFailureMessageToWriteInResultFile(monitoredItem.DisplayName, value);
-                    SysLog.Error($"Bad status code: {value.StatusCode} from server for this nodeId: {monitoredItem.DisplayName}. Please check OPC Server status. ");
-                }
-                else
-                {
-                    message = CreateSuccessMessageToWriteInResultFile(monitoredItem.DisplayName, value);
-                    SysLog.Info($"Values received in publish mode: {monitoredItem.DisplayName}: { value.Value}, {value.SourceTimestamp}, {value.StatusCode}");
-                }
-
-                FileManager.WriteToFile(message, _fileName, _directoryPath, _header);
-            }
-        }
-
-        private string CreateSuccessMessageToWriteInResultFile(string monitoredItemName, DataValue value)
-        {
-            return $"{monitoredItemName}  ,\t  { value.Value} ,\t {value.StatusCode} ,\t {value.SourceTimestamp} ,\t . ";
-        }
-
-        private string CreateFailureMessageToWriteInResultFile(string monitoredItemName, DataValue value)
-        {
-            return $"{monitoredItemName}  ,\t  ,\t {value.StatusCode} ,\t {value.SourceTimestamp} ,\t Bad status code: {value.StatusCode} from server for this nodeId: {monitoredItemName}. Please check OPC Server status.";
-        }
-
-        private static string CreateHeaderFile()
-        {
-            string header = "Tagid  ,\t Value ,\t StatusCode ,\t Timestamp ,\t Error messages";
-
-            return header;
-        }
-
-        private MonitoringFilter CreateMonitoredItemFilter()
+        private static MonitoringFilter CreateMonitoredItemFilter()
         {
             return new DataChangeFilter
             {

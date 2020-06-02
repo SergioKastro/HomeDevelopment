@@ -1,14 +1,14 @@
-﻿using Kognifai.OPCUA.Client.Configuration;
-using log4net;
-using Opc.Ua;
-using Opc.Ua.Configuration;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using System.Threading.Tasks;
+using Kognifai.OPCUA.Connector.Configuration;
+using log4net;
+using Opc.Ua;
+using Opc.Ua.Configuration;
 
-namespace Kognifai.OPCUA.Client.Client
+namespace Kognifai.OPCUA.Connector.Client
 {
     public class OpcUaClientConfiguration
     {

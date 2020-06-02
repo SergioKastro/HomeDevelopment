@@ -1,10 +1,14 @@
 ﻿using log4net;
 using System;
 using System.ServiceProcess;
+using Kognifai.OPCUA.Connector;
+using Kognifai.OPCUA.Connector.Configuration;
+using Microsoft.Extensions.Configuration;
+
 
 namespace GetOpcUaTagsValues
 {
-    static class Program
+    public static class Program
     {
         private static readonly ILog SysLog = LogManager.GetLogger(typeof(Program));
 
@@ -15,12 +19,29 @@ namespace GetOpcUaTagsValues
         [STAThread]
         static void Main()
         {
-            ServiceBase[] ServicesToRun;
-            ServicesToRun = new ServiceBase[]
+            var appSettings = new ConfigurationBuilder()
+                .SetBasePath(AppDomain.CurrentDomain.BaseDirectory)
+                .AddJsonFile("appsettings.json", true, true)
+                .Build()
+                .Get<AppSettings>();
+
+            if (!Environment.UserInteractive)
             {
-                new GetOpcUaTagValuesService()
-            };
-            ServiceBase.Run(ServicesToRun);
+                // Startup as service.
+                var servicesToRun = new ServiceBase[]
+                {
+                    new GetOpcUaTagValuesService(new OpcUaProcessor(appSettings))
+                };
+                ServiceBase.Run(servicesToRun);
+
+            }
+            else
+            {
+                // Startup as application
+                var processor = new OpcUaProcessor(appSettings);
+                processor.Start();
+                processor.Stop();
+            }
         }
     }
 }
