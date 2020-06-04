@@ -6,6 +6,9 @@ MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Kognifai.File", "Kognifai.File\Kognifai.File.csproj", "{896945D1-801A-45B9-926E-7AE2E07153CF}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Kognifai.WindowsService.TopShelf", "Kognifai.WindowsService.TopShelf\Kognifai.WindowsService.TopShelf.csproj", "{C62AB38D-6968-48F5-B102-CACCEE9AE49A}"
+	ProjectSection(ProjectDependencies) = postProject
+		{896945D1-801A-45B9-926E-7AE2E07153CF} = {896945D1-801A-45B9-926E-7AE2E07153CF}
+	EndProjectSection
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Kognifai.OPCUA.Connector", "Kognifai.OPCUA.Connector\Kognifai.OPCUA.Connector.csproj", "{7FB73D2C-7F07-4452-B8D1-992E9D8E5EB4}"
 EndProject

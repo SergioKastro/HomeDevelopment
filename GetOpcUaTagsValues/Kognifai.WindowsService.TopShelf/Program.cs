@@ -1,4 +1,4 @@
-﻿using log4net;
+﻿//using log4net;
 using System;
 using Kognifai.OPCUA.Connector.Configuration;
 using Microsoft.Extensions.Configuration;
@@ -8,39 +8,40 @@ namespace Kognifai.WindowsService.TopShelf
 {
     public class Program
     {
-        private static readonly ILog SysLog = LogManager.GetLogger(typeof(Program));
 
+        [STAThread]
         public static void Main()
         {
-            SysLog.Info("Starting app.");
-
             var appSettings = new ConfigurationBuilder()
                 .SetBasePath(AppDomain.CurrentDomain.BaseDirectory)
                 .AddJsonFile("appsettings.json", true, true)
                 .Build()
                 .Get<AppSettings>();
 
-            var rc = HostFactory.Run(host =>
+            var topShelfExitCode = HostFactory.Run(hostConfigurator =>
             {
-                host.SetServiceName("Kognifai OPCUA GetTags Service");
-                host.SetDisplayName("Kognifai OPCUA GetTags Service");
-                host.SetDescription("OPCUA Windows Service which gets the value from the static tags. ");
+                hostConfigurator.SetServiceName("Kognifai OPCUA GetTags Service");
+                hostConfigurator.SetDisplayName("Kognifai OPCUA GetTags Service");
+                hostConfigurator.SetDescription("OPCUA Windows Service which gets the value from the static tags. ");
 
-                host.StartAutomaticallyDelayed(); // Automatic (Delayed) -- only available on .NET 4.0 or later
+                hostConfigurator.StartAutomaticallyDelayed(); // Automatic (Delayed) -- only available on .NET 4.0 or later
 
-                host.RunAsLocalSystem();
+                hostConfigurator.EnableShutdown();
 
-                host.Service<OpcUaProcessorTopShelfWrapper>(sc =>
+                hostConfigurator.RunAsLocalSystem();
+
+                hostConfigurator.Service<OpcUaProcessorTopShelfWrapper>(serviceConfigurator =>
                 {
-                    sc.ConstructUsing(name => new OpcUaProcessorTopShelfWrapper(appSettings));
-                    sc.WhenStarted((s, hostControl) => s.Start(hostControl));
-                    sc.WhenStopped((s, hostControl) => s.Stop(hostControl));
-                    sc.WhenShutdown((s, hostControl) => s.Shutdown(hostControl));
+                    serviceConfigurator.ConstructUsing(name => new OpcUaProcessorTopShelfWrapper(appSettings));
+                    serviceConfigurator.WhenStarted((s, hostControl) => s.Start(hostControl));
+                    serviceConfigurator.WhenStopped((s, hostControl) => s.Stop(hostControl));
+                    serviceConfigurator.WhenShutdown((s, hostControl) => s.Shutdown(hostControl));
                 });
             });
 
-            var exitCode = (int)Convert.ChangeType(rc, rc.GetTypeCode());
+            var exitCode = (int)Convert.ChangeType(topShelfExitCode, topShelfExitCode.GetTypeCode());
             Environment.ExitCode = exitCode;
+
         }
     }
 }

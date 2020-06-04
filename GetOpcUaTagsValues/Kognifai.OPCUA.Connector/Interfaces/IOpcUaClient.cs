@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Threading.Tasks;
 using Opc.Ua.Client;
 
 namespace Kognifai.OPCUA.Connector.Interfaces
@@ -12,5 +11,6 @@ namespace Kognifai.OPCUA.Connector.Interfaces
         void UnsubscribeMonitorItems(IReadOnlyCollection<MonitoredItem> monitoredItems, Action<MonitoredItem, MonitoredItemNotificationEventArgs> callback);
         void Dispose();
         bool Reconnected { get; }
+        void StopTimerCheckConnection();
     }
 }

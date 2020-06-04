@@ -9,37 +9,42 @@ namespace Kognifai.WindowsService.TopShelf
 {
     public class OpcUaProcessorTopShelfWrapper : ServiceControl
     {
-        private readonly AppSettings _appSettings;
         private static readonly ILog SysLog = LogManager.GetLogger(typeof(OpcUaProcessorTopShelfWrapper));
+        private readonly AppSettings _appSettings;
 
-
-        private readonly Timer _timer;
+        private Timer _timer;
         private OpcUaProcessor _processor;
 
         public OpcUaProcessorTopShelfWrapper(AppSettings appSettings)
         {
             _appSettings = appSettings;
 
-            _timer = new Timer
-            {
-                AutoReset = true,
-                Enabled = true
-            };
+            SetTimer(1000);//Initial timer will run after 1 sec
+        }
 
+        private void SetTimer(int intervalMs)
+        {
+            // Create a timer .
+            _timer = new Timer(intervalMs); 
+
+            // Hook up the Elapsed event for the timer. 
             _timer.Elapsed += OnTimerOnElapsed;
+            _timer.AutoReset = true;
+            _timer.Enabled = true;
         }
 
         private void OnTimerOnElapsed(object sender, ElapsedEventArgs eventArgs)
         {
-            SysLog.Info("Starting the OPCUA Processor.");
-            _timer.Stop();
+            _timer.Enabled = false;
 
             _processor = new OpcUaProcessor(_appSettings);
             _processor.Start();
 
             //Set the correct Timer interval after the first time runs
-            _timer.Interval = TimeSpan.FromMinutes(_appSettings.ServiceIntervalMinutes).TotalMilliseconds; 
-            _timer.Start();
+            _timer.Interval = TimeSpan.FromMinutes(_appSettings.ServiceIntervalMinutes).TotalMilliseconds;
+            _timer.Enabled = true;
+
+            SysLog.Info($"Next execution time: {DateTime.Now.AddMinutes(_appSettings.ServiceIntervalMinutes)}.");
         }
 
 
@@ -52,18 +57,44 @@ namespace Kognifai.WindowsService.TopShelf
 
         public bool Stop(HostControl hostControl)
         {
+
+            SysLog.Info("Stopping windows service ....");
+
+            _timer.Enabled = false;
             _timer.Stop();
 
-            _processor.Stop();
+            try
+            {
+                _processor.Stop();
+            }
+            catch(Exception ex)
+            {
+                SysLog.Error("Could not stop the opcua processor properly. Unexpected error", ex);
+                return false;
+            }
 
-            return false;
+            SysLog.Info("OPCUA Windows Service stopped.");
+            return true;
         }
 
-        public void Shutdown(HostControl hostControl)
+        public bool Shutdown(HostControl hostControl)
         {
+            SysLog.Info("Shutting down windows service ....");
+
             _timer.Stop();
 
-            _processor.Shutdown();
+            try
+            {
+                _processor.Shutdown();
+            }
+            catch (Exception ex)
+            {
+                SysLog.Error("Could not shutdown the opcua processor properly. Unexpected error", ex);
+                return false;
+            }
+
+            SysLog.Info("OPCUA Windows Service shutdown completed.");
+            return true;
         }
     }
 }

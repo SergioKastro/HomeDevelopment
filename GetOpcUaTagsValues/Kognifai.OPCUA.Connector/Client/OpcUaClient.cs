@@ -63,6 +63,12 @@ namespace Kognifai.OPCUA.Connector.Client
 
         public List<MonitoredItem> CreateMonitoredItems(List<string> listNodeIds)
         {
+            if (!_sessionClient.IsConnected)
+            {
+                SysLog.Error("Failed to connect to server, Please check opcua server is running");
+                return null;
+            }
+
             var monitoredItemsHandler = new MonitoredItemsHandler(_sessionClient, _appSettings);
             return monitoredItemsHandler.CreateListMonitoredItems(listNodeIds);
         }
@@ -166,7 +172,7 @@ namespace Kognifai.OPCUA.Connector.Client
                 SysLog.Info("Disconnecting from server ...");
 
                 //Removing current monitoredItems subscribed
-                if (_listMonitoredItemsSubscribedPerSubscription != null)
+                if (_listMonitoredItemsSubscribedPerSubscription != null && _listMonitoredItemsSubscribedPerSubscription.Any() && _subscription != null)
                 {
                     SysLog.Info($"Removing {_listMonitoredItemsSubscribedPerSubscription.Count} monitoredItems from  subscription: \"{_subscription.DisplayName}\" ...");
                     UnsubscribeMonitorItems(_listMonitoredItemsSubscribedPerSubscription, _callback);
@@ -185,11 +191,16 @@ namespace Kognifai.OPCUA.Connector.Client
                 _sessionClient.Dispose();
 
                 //Stop Timer to check connection
-                _checkConnectionTimer.Elapsed -= OnCheckConnectionTimerOnElapsedCheckConnection;
-                _checkConnectionTimer.Stop();
+                StopTimerCheckConnection();
 
                 SysLog.Info("Disconnected from server.");
             }
+        }
+
+        public void StopTimerCheckConnection()
+        {
+            _checkConnectionTimer.Elapsed -= OnCheckConnectionTimerOnElapsed;
+            _checkConnectionTimer.Stop();
         }
 
         private void Unsubscribe(Subscription subscription)
@@ -233,10 +244,10 @@ namespace Kognifai.OPCUA.Connector.Client
                 Interval = TimeSpan.FromMilliseconds(this._appSettings.ConnectionCheckIntervalMs).TotalMilliseconds
             };
 
-            _checkConnectionTimer.Elapsed += OnCheckConnectionTimerOnElapsedCheckConnection;
+            _checkConnectionTimer.Elapsed += OnCheckConnectionTimerOnElapsed;
         }
 
-        private void OnCheckConnectionTimerOnElapsedCheckConnection(object sender, ElapsedEventArgs e)
+        private void OnCheckConnectionTimerOnElapsed(object sender, ElapsedEventArgs e)
         {
             if (_sessionClient == null)
             {
@@ -245,7 +256,7 @@ namespace Kognifai.OPCUA.Connector.Client
 
             if (!_sessionClient.IsConnected)
             {
-                SysLog.Warn("Client session disconnected. Trying to resubscribe.");
+                SysLog.Warn("Client session disconnected. Trying to reconnect.");
 
                 this.Dispose(true);
                 InitOpcUaClient();
