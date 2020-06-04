@@ -27,19 +27,19 @@ namespace Kognifai.OPCUA.Connector
         private readonly int _maxMonitoredItemsBatchSize;
 
         private string _fileName;
-        private bool _started;
         private int _totalItemsToAddInCurrentIteration;
         public int TotalItemsToAddInCurrentIteration
         {
             get => _totalItemsToAddInCurrentIteration;
-            set => _totalItemsToAddInCurrentIteration = value > this._maxMonitoredItemsBatchSize ? 
-                this._maxMonitoredItemsBatchSize : 
+            set => _totalItemsToAddInCurrentIteration = value > this._maxMonitoredItemsBatchSize ?
+                this._maxMonitoredItemsBatchSize :
                 value;
         }
         private CancellationTokenSource _cancellationTokenSource;
         private List<MonitoredItem> _monitoredItemsAddedLastIterationInSubscription;
         private DateTime _nextIterationTimeToAddItemsIntoSubscription;
         private List<MonitoredItem> _itemsToBeUnsubscribed;
+        public bool IsRunning { get; private set; }
 
         private enum MonitorItemStatus
         {
@@ -56,16 +56,17 @@ namespace Kognifai.OPCUA.Connector
 
         public void Start()
         {
-            if (!this._started)
+            if (!this.IsRunning)
             {
                 try
                 {
                     Logging.Info("Starting OpcUa Processor ....");
 
+
                     this._client = new OpcUaClient(_appSettings, this.Notify);
+                    this._cancellationTokenSource = new CancellationTokenSource();
 
                     this._fileName = this._appSettings.PrefixFileName + $"{DateTime.Now:yyyy_MM_dd_HH_mm_ss}" + ".csv";
-                    this._cancellationTokenSource = new CancellationTokenSource();
                     var listSensors = FileManager.DataReading(this._appSettings.SensorListFilePath);
 
                     lock (LockObject)
@@ -84,11 +85,11 @@ namespace Kognifai.OPCUA.Connector
                         this.TotalItemsToAddInCurrentIteration = this._maxMonitoredItemsBatchSize;
                     }
 
-                    this._started = true;
+                    this.IsRunning = true;
 
                     Task.WhenAny(
                             this.AddItemsToSubscriptionTask(this._cancellationTokenSource.Token),
-                            this.ProcessTask(this._cancellationTokenSource.Token))
+                            this.MonitorTask(this._cancellationTokenSource.Token))
                         .Wait();
 
                     //When completed we stop the whole process
@@ -102,7 +103,7 @@ namespace Kognifai.OPCUA.Connector
                 finally
                 {
                     this.Stop();
-                    this._started = false;
+                    this.IsRunning = false;
                 }
             }
         }
@@ -111,7 +112,7 @@ namespace Kognifai.OPCUA.Connector
         {
             this._client.StopTimerCheckConnection();
 
-            if (this._started)
+            if (this.IsRunning)
             {
                 Logging.Info("Stopping OpcUa processor ....");
 
@@ -147,7 +148,7 @@ namespace Kognifai.OPCUA.Connector
             return values;
         }
 
-        private async Task ProcessTask(CancellationToken cancellationToken)
+        private async Task MonitorTask(CancellationToken cancellationToken)
         {
             while (!cancellationToken.IsCancellationRequested)
             {
@@ -178,6 +179,31 @@ namespace Kognifai.OPCUA.Connector
             Logging.Info($"Waiting for the next iteration at: {this._nextIterationTimeToAddItemsIntoSubscription}.");
             Logging.Info("==============================================================================");
         }
+
+        //public string DisplayElapseTime(int elapsedTime)
+        //{
+        //    int totalSeconds = ....;///
+        //    int totalMinutes = totalSeconds / 60;
+        //    int totalHours = totalMinutes / 60;
+        //    int totalDays = totalHours / 24;
+
+        //    if (totalDays > 0)
+        //    {
+        //        //show days
+        //    }
+        //    else if (totalHours > 0)
+        //    {
+        //        //show hours
+        //    }
+        //    else if (totalMinutes > 0)
+        //    {
+        //        //show minutes
+        //    }
+        //    else
+        //    {
+        //        //show seconds
+        //    }
+        //}
 
         private async Task AddItemsToSubscriptionTask(CancellationToken cancellationToken)
         {
@@ -255,7 +281,7 @@ namespace Kognifai.OPCUA.Connector
 
             if (!string.IsNullOrEmpty(messageToWriteInResultFile))
             {
-                FileManager.WriteToFile(messageToWriteInResultFile, _fileName, _appSettings.DataFolder, FileManager.GetHeaderForFile());
+                FileManager.WriteToFile(messageToWriteInResultFile, _fileName, _appSettings.DataFolder, GetHeaderForFile());
             }
 
             this._client.UnsubscribeMonitorItems(_itemsToBeUnsubscribed, this.Notify);
@@ -283,6 +309,13 @@ namespace Kognifai.OPCUA.Connector
             return numberOfToSubscribe;
         }
 
+        private static string GetHeaderForFile()
+        {
+            const string header = "TagId  ,\t Value ,\t StatusCode ,\t Timestamp";
+
+            return header;
+        }
+
         private static string CreateSuccessMessageToWriteInResultFile(string monitoredItemName, DataValue value)
         {
             var message = $"{monitoredItemName}  ,\t  { value.Value} ,\t {value.StatusCode} ,\t {value.SourceTimestamp} . \n ";
@@ -294,9 +327,7 @@ namespace Kognifai.OPCUA.Connector
 
         private static void LogFailureMessage(string monitoredItemName, DataValue value)
         {
-            Logging.Error(
-                $"{monitoredItemName}  ,\t  {value.StatusCode} ,\t {value.SourceTimestamp} ,\t Bad status code: {value.StatusCode} from server for this nodeId: {monitoredItemName}. Please check OPC Server status.");
-
+            Logging.Error($"Bad status code: {value.StatusCode} from server for this nodeId: {monitoredItemName}. Please check OPC Server status.");
         }
     }
 }

@@ -18,6 +18,7 @@ namespace Kognifai.WindowsService.TopShelf
         public OpcUaProcessorTopShelfWrapper(AppSettings appSettings)
         {
             _appSettings = appSettings;
+            _processor = new OpcUaProcessor(_appSettings);
 
             SetTimer(1000);//Initial timer will run after 1 sec
         }
@@ -37,7 +38,11 @@ namespace Kognifai.WindowsService.TopShelf
         {
             _timer.Enabled = false;
 
-            _processor = new OpcUaProcessor(_appSettings);
+            if (_processor.IsRunning)
+            {
+                _processor.Stop();
+            }
+
             _processor.Start();
 
             //Set the correct Timer interval after the first time runs

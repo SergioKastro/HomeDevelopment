@@ -79,11 +79,5 @@ namespace Kognifai.File
             SysLog.Debug("Writing data in result file completed.");
         }
 
-        public static string GetHeaderForFile()
-        {
-            const string header = "TagId  ,\t Value ,\t StatusCode ,\t Timestamp";
-
-            return header;
-        }
     }
 }
