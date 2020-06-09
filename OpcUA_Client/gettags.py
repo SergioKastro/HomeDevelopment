@@ -7,19 +7,19 @@ from opcua import Client
 
 if __name__ == "__main__":
     #local run
-    # client = Client("opc.tcp://KPC22014549:21381/MatrikonOpcUaWrapper")
-    # filename = r"C:\Users\sergioc\OneDrive - KONGSBERG MARITIME AS\Projects\Edge Gateway for Shell\Trond app to read tags unit measures\Taglist.txt"
-    # outfile =  r"C:\Users\sergioc\OneDrive - KONGSBERG MARITIME AS\Projects\Edge Gateway for Shell\Trond app to read tags unit measures\resultTagList.txt"
+    client = Client("opc.tcp://KPC22014549:21381/MatrikonOpcUaWrapper")
+    filename = r"C:\Users\sergioc\OneDrive - KONGSBERG MARITIME AS\Projects\Edge Gateway for Shell\Trond app to read tags unit measures\Taglist.txt"
+    outfile =  r"C:\Users\sergioc\OneDrive - KONGSBERG MARITIME AS\Projects\Edge Gateway for Shell\Trond app to read tags unit measures\resultTagList.txt"
     
     #Client run with arguments
-    if len(sys.argv) != 4:
-        print("Syntax: " , sys.argv[0], "[OpcUaUrl]", "[Inputfile]", "[Outputfile]")
-        sys.exit(-1)
+    # if len(sys.argv) != 4:
+    #     print("Syntax: " , sys.argv[0], "[OpcUaUrl]", "[Inputfile]", "[Outputfile]")
+    #     sys.exit(-1)
         
-    url = sys.argv[1]
-    filename = sys.argv[2]
-    outfile =  sys.argv[3]
-    client = Client(url)
+    # url = sys.argv[1]
+    # filename = sys.argv[2]
+    # outfile =  sys.argv[3]
+    # client = Client(url)
     
     try:
         client.connect()
