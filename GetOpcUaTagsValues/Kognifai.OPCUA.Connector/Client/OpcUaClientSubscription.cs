@@ -94,6 +94,7 @@ namespace Kognifai.OPCUA.Connector.Client
         {
             var buffer = new StringBuilder();
 
+            buffer.Append("\n ");
             buffer.Append("\n Subscription Name: " + subscription.DisplayName + " ");
             buffer.Append("\n Subscription Mode/type: ");
             buffer.Append(subscription.CurrentPublishingEnabled ? "Publishing" : "Polling");
@@ -109,6 +110,7 @@ namespace Kognifai.OPCUA.Connector.Client
             buffer.Append(_subscription.MonitoredItemCount.ToString());
             buffer.Append("\n SequenceNumber: ");
             buffer.Append(_subscription.SequenceNumber.ToString());
+            buffer.Append("\n ");
 
 
             return buffer.ToString();

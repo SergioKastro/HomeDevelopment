@@ -128,7 +128,7 @@ namespace Kognifai.OPCUA.Connector.Client
                 return;
             }
 
-            foreach(var monitoredItem in monitoredItems)
+            foreach (var monitoredItem in monitoredItems)
             {
                 monitoredItem.Notification -= callback.Invoke;
             }

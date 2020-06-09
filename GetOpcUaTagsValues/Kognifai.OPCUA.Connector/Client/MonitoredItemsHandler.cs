@@ -37,8 +37,8 @@ namespace Kognifai.OPCUA.Connector.Client
             return PopulateListMonitoredItemsFromBrowsePathResultList(listNodeIds, browseResults);
         }
 
-      
-    private List<MonitoredItem> PopulateListMonitoredItemsFromBrowsePathResultList(IReadOnlyList<string> sensors, BrowsePathResultCollection browseResults)
+
+        private List<MonitoredItem> PopulateListMonitoredItemsFromBrowsePathResultList(IReadOnlyList<string> sensors, BrowsePathResultCollection browseResults)
         {
             var items = new List<MonitoredItem>();
 
@@ -62,7 +62,7 @@ namespace Kognifai.OPCUA.Connector.Client
                         DisplayName = sensor,
                         NodeClass = NodeClass.Variable,
                         AttributeId = Attributes.Value,
-                        SamplingInterval = _appSettings.DefaultSamplingIntervalMs,
+                        SamplingInterval = _appSettings.SamplingIntervalMs,
                         MonitoringMode = MonitoringMode.Reporting,
                         //For Polling and for MatrikonServer (Shell) we will use the default queue size, which is 0 (and it means that we will get just the latest value)
                         QueueSize = 0,

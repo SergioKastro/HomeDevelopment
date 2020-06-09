@@ -32,7 +32,7 @@ namespace Kognifai.File
                             result.Add(line.Trim());
                         }
                     }
-                        
+
                 }
             }
             catch (Exception ex)
@@ -46,11 +46,15 @@ namespace Kognifai.File
 
         public static void WriteToFile(string message, string fileName, string directoryPath = null, string header = null)
         {
-            if (string.IsNullOrEmpty(directoryPath)) directoryPath = "C:\\Logs";
+            if (string.IsNullOrEmpty(directoryPath))
+            {
+                directoryPath = "C:\\Logs";
+            }
 
             if (!Directory.Exists(directoryPath)) Directory.CreateDirectory(directoryPath);
 
-            var filepath = directoryPath + "\\" + fileName;
+            var filepath = Path.Combine(directoryPath, fileName);
+
             try
             {
                 if (!System.IO.File.Exists(filepath))
@@ -76,7 +80,7 @@ namespace Kognifai.File
                 SysLog.Error($"Unable to write data to the file {fileName}. ", ex);
             }
 
-            SysLog.Debug("Writing data in result file completed.");
+            SysLog.Info($"\n\n Writing data in result file \"{filepath}\" completed.\n");
         }
 
     }

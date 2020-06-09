@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -39,6 +41,7 @@ namespace Kognifai.OPCUA.Connector
         private List<MonitoredItem> _monitoredItemsAddedLastIterationInSubscription;
         private DateTime _nextIterationTimeToAddItemsIntoSubscription;
         private List<MonitoredItem> _itemsToBeUnsubscribed;
+        private Stopwatch _processorElapsedTime;
         public bool IsRunning { get; private set; }
 
         private enum MonitorItemStatus
@@ -62,12 +65,13 @@ namespace Kognifai.OPCUA.Connector
                 {
                     Logging.Info("Starting OpcUa Processor ....");
 
+                    _processorElapsedTime = Stopwatch.StartNew();
 
                     this._client = new OpcUaClient(_appSettings, this.Notify);
                     this._cancellationTokenSource = new CancellationTokenSource();
 
-                    this._fileName = this._appSettings.PrefixFileName + $"{DateTime.Now:yyyy_MM_dd_HH_mm_ss}" + ".csv";
-                    var listSensors = FileManager.DataReading(this._appSettings.SensorListFilePath);
+                    this._fileName = this._appSettings.PrefixResultFileName + $"{DateTime.Now:yyyy_MM_dd_HH_mm_ss}" + ".csv";
+                    var listSensors = FileManager.DataReading(Path.Combine(this._appSettings.SensorListFolderPath, this._appSettings.SensorListFileName));
 
                     lock (LockObject)
                     {
@@ -93,7 +97,7 @@ namespace Kognifai.OPCUA.Connector
                         .Wait();
 
                     //When completed we stop the whole process
-                    Logging.Info("OpcUa Processor completed. Stopping and setting next interval.");
+                    Logging.Info("\n\n OpcUa Processor completed. Stopping and setting next interval.\n\n");
 
                 }
                 catch (Exception ex)
@@ -115,6 +119,9 @@ namespace Kognifai.OPCUA.Connector
             if (this.IsRunning)
             {
                 Logging.Info("Stopping OpcUa processor ....");
+
+                //Stop timer for elapse time
+                _processorElapsedTime.Stop();
 
                 //Remove monitoredItems from the Subscription
                 var values = GetCurrentMonitoredItemsFromConcurrentQueue();
@@ -175,35 +182,39 @@ namespace Kognifai.OPCUA.Connector
             Logging.Info($"Number of items removed from subscription in the last iteration: {this._itemsToBeUnsubscribed.Count}.");
             Logging.Info($"Items in the queue waiting to read their values: {this._queue.Count}.");
             Logging.Info($"Total Items Processed: {totalProcessed}.");
+            Logging.Info($"Elapsed time: {DisplayElapseTime(_processorElapsedTime.Elapsed)}.");
             Logging.Info($"Total Items to add in next iteration: {this.TotalItemsToAddInCurrentIteration}.");
             Logging.Info($"Waiting for the next iteration at: {this._nextIterationTimeToAddItemsIntoSubscription}.");
             Logging.Info("==============================================================================");
         }
 
-        //public string DisplayElapseTime(int elapsedTime)
-        //{
-        //    int totalSeconds = ....;///
-        //    int totalMinutes = totalSeconds / 60;
-        //    int totalHours = totalMinutes / 60;
-        //    int totalDays = totalHours / 24;
+        private static string DisplayElapseTime(TimeSpan elapsedTimeSpan)
+        {
 
-        //    if (totalDays > 0)
-        //    {
-        //        //show days
-        //    }
-        //    else if (totalHours > 0)
-        //    {
-        //        //show hours
-        //    }
-        //    else if (totalMinutes > 0)
-        //    {
-        //        //show minutes
-        //    }
-        //    else
-        //    {
-        //        //show seconds
-        //    }
-        //}
+            string resultElapsedTime;
+
+            if (elapsedTimeSpan.Days > 0)
+            {
+                //show days
+                resultElapsedTime = $"{elapsedTimeSpan.Days:D2}d:{elapsedTimeSpan.Hours:D2}h:{elapsedTimeSpan.Minutes:D2}m:{elapsedTimeSpan.Seconds:D2}s";
+            }
+            else if (elapsedTimeSpan.Hours > 0)
+            {
+                //show hours
+                resultElapsedTime = $"{elapsedTimeSpan.Hours:D2}h:{elapsedTimeSpan.Minutes:D2}m:{elapsedTimeSpan.Seconds:D2}s";
+            }
+            else if (elapsedTimeSpan.Minutes > 0)
+            {
+                //show minutes
+                resultElapsedTime = $"{elapsedTimeSpan.Minutes:D2}m:{elapsedTimeSpan.Seconds:D2}s";
+            }
+            else
+            {
+                resultElapsedTime = $"{elapsedTimeSpan.Seconds:D2}s";
+            }
+
+            return resultElapsedTime;
+        }
 
         private async Task AddItemsToSubscriptionTask(CancellationToken cancellationToken)
         {
@@ -281,7 +292,7 @@ namespace Kognifai.OPCUA.Connector
 
             if (!string.IsNullOrEmpty(messageToWriteInResultFile))
             {
-                FileManager.WriteToFile(messageToWriteInResultFile, _fileName, _appSettings.DataFolder, GetHeaderForFile());
+                FileManager.WriteToFile(messageToWriteInResultFile, _fileName, _appSettings.ResultFolderPath, GetHeaderForFile());
             }
 
             this._client.UnsubscribeMonitorItems(_itemsToBeUnsubscribed, this.Notify);
@@ -327,7 +338,7 @@ namespace Kognifai.OPCUA.Connector
 
         private static void LogFailureMessage(string monitoredItemName, DataValue value)
         {
-            Logging.Error($"Bad status code: {value.StatusCode} from server for this nodeId: {monitoredItemName}. Please check OPC Server status.");
+            Logging.Debug($"Bad status code: {value.StatusCode} from server for this nodeId: {monitoredItemName}. Please check OPC Server status.");
         }
     }
 }
