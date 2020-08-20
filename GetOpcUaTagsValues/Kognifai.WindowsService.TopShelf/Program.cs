@@ -1,5 +1,4 @@
-﻿//using log4net;
-using System;
+﻿using System;
 using Kognifai.OPCUA.Connector.Configuration;
 using Microsoft.Extensions.Configuration;
 using Topshelf;
@@ -41,7 +40,6 @@ namespace Kognifai.WindowsService.TopShelf
 
             var exitCode = (int)Convert.ChangeType(topShelfExitCode, topShelfExitCode.GetTypeCode());
             Environment.ExitCode = exitCode;
-
         }
     }
 }

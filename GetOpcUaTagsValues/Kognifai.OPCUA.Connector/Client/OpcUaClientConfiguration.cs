@@ -12,7 +12,7 @@ namespace Kognifai.OPCUA.Connector.Client
 {
     public class OpcUaClientConfiguration
     {
-        private static readonly ILog Log = LogManager.GetLogger(typeof(OpcUaClientConfiguration));
+        private static readonly ILog SysLog = LogManager.GetLogger(typeof(OpcUaClientConfiguration));
         private readonly string _opcServerUrl;
 
         public OpcUaClientConfiguration(string opcServerUrl)
@@ -47,7 +47,7 @@ namespace Kognifai.OPCUA.Connector.Client
                 }
                 catch (Exception ex)
                 {
-                    Log.Error("Invalid opcua configuration", ex);
+                    SysLog.Error("Invalid opcua configuration", ex);
                 }
                 return _endpoint;
             }
@@ -120,7 +120,7 @@ namespace Kognifai.OPCUA.Connector.Client
             }
             catch (Exception ex)
             {
-                Log.Warn("failed retrieve endpoint ", ex);
+                SysLog.Warn("failed retrieve endpoint ", ex);
                 return null;
             }
         }
@@ -157,12 +157,12 @@ namespace Kognifai.OPCUA.Connector.Client
             return useBinaryEncoding;
         }
 
-        private string SetSecurityPolicyUriProperty(string[] fields)
+        private string SetSecurityPolicyUriProperty(IReadOnlyList<string> fields)
         {
             string securityPolicyUri;
             try
             {
-                securityPolicyUri = fields.Length > 1 ? SecurityPolicies.GetUri(fields[1]) : SecurityPolicies.None;
+                securityPolicyUri = fields.Count > 1 ? SecurityPolicies.GetUri(fields[1]) : SecurityPolicies.None;
             }
             catch
             {
@@ -172,12 +172,12 @@ namespace Kognifai.OPCUA.Connector.Client
             return securityPolicyUri;
         }
 
-        private MessageSecurityMode SetSecurityModeProperty(string[] fields)
+        private MessageSecurityMode SetSecurityModeProperty(IReadOnlyList<string> fields)
         {
             MessageSecurityMode securityMode;
             try
             {
-                securityMode = fields.Length > 0
+                securityMode = fields.Count > 0
                     ? (MessageSecurityMode)Enum.Parse(typeof(MessageSecurityMode), fields[0], false)
                     : MessageSecurityMode.None;
             }

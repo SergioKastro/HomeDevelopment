@@ -32,7 +32,7 @@ namespace Kognifai.File
                             result.Add(line.Trim());
                         }
                     }
-
+                        
                 }
             }
             catch (Exception ex)
@@ -53,7 +53,7 @@ namespace Kognifai.File
 
             if (!Directory.Exists(directoryPath)) Directory.CreateDirectory(directoryPath);
 
-            var filepath = Path.Combine(directoryPath, fileName);
+            var filepath = Path.Combine(directoryPath, fileName); 
 
             try
             {

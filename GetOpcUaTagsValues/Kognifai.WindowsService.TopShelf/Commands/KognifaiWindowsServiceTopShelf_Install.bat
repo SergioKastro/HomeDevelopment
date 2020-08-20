@@ -1,6 +1,6 @@
 
 @echo off
-set programpath="%programfiles%\Kognifai\OPCUA_GetTagValuesService\"
+set programpath="%programfiles%\Kognifai\OPCUA_GetStaticTagsService\"
 
 @echo Installing the service
  cd %programpath%

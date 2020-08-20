@@ -2,7 +2,6 @@
 {
     public interface IOpcUaProcessor
     {
-
         void Start();
 
         void Stop();

@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Text;
 using System.Threading.Tasks;
 using Kognifai.OPCUA.Connector.Configuration;
@@ -11,14 +10,14 @@ namespace Kognifai.OPCUA.Connector.Client
 {
     public sealed class OpcUaClientSession
     {
-        private static readonly ILog Log = LogManager.GetLogger(typeof(OpcUaClientSession));
+        private static readonly ILog SysLog = LogManager.GetLogger(typeof(OpcUaClientSession));
         private Session _session;
 
-        public bool IsConnected => !(_session == null || !_session.Connected || _session.KeepAliveStopped);
+        public bool IsConnected => !(_session == null || !this._session.Connected || this._session.KeepAliveStopped);
 
         public async Task CreateSessionAsync(OpcUaClientConfiguration config)
         {
-            Log.Info("Creating the Opcua client session.");
+            SysLog.Info("Creating the Opcua client session.");
             try
             {
                 var endpoint = config.Endpoint;
@@ -34,12 +33,12 @@ namespace Kognifai.OPCUA.Connector.Client
 
                     var identity = GetUserIdentity(endpoint);
                     _session = await Session.Create(appConfig, endpoint, true, false, Constants.DefaultSessionName, Constants.DefaultSessionTimeoutMs, identity, null);
-                    Log.Info("OpcUa client session successfully created");
+                    SysLog.Info("OpcUa client session successfully created");
 
                 }
                 else
                 {
-                    Log.Warn("Failed to get OPC server url from connector source config.");
+                    SysLog.Warn("Failed to get OPC server url from connector source config.");
                 }
             }
             catch (Exception ex)
@@ -68,55 +67,64 @@ namespace Kognifai.OPCUA.Connector.Client
 
         public void Dispose()
         {
-            _session?.Dispose();
+            this._session?.Dispose();
         }
 
         public void Close()
         {
-            _session?.Close();
+            this._session?.Close();
         }
 
         public void AddSubscription(Subscription subscription)
         {
-            _session.AddSubscription(subscription);
+            this._session.AddSubscription(subscription);
         }
 
         public void RemoveSubscription(Subscription subscription)
         {
-            _session.RemoveSubscription(subscription);
+            this._session.RemoveSubscription(subscription);
         }
 
-        public BrowsePathResultCollection GetBrowseResults(List<string> listNodeIds)
+        public BrowsePathResult GetBrowseResultForOneNode(string nodeId)
         {
-            var browseResults = new BrowsePathResultCollection(listNodeIds.Count);
+            var result = new BrowsePathResult { StatusCode = StatusCodes.Bad };
 
-            foreach (var nodeId in listNodeIds)
+            try
             {
-                try
+                SysLog.Debug($"Trying to locate {nodeId}.\n");
+                //This call is a synchronous call (Polling). This type of call for some nodes it is too quickly
+                var node = this._session?.ReadNode(nodeId);
+
+                var target = new BrowsePathTarget
                 {
-                    var node = _session?.ReadNode(nodeId);
+                    TargetId = node?.NodeId
+                };
 
-                    var target = new BrowsePathTarget
-                    {
-                        TargetId = node?.NodeId
-                    };
+                result.StatusCode = node?.NodeId is null ? StatusCodes.Bad : StatusCodes.Good;
 
-                    var result = new BrowsePathResult
-                    {
-                        StatusCode = node?.NodeId is null ? StatusCodes.BadNodeIdUnknown : StatusCodes.Good
-                    };
-                    result.Targets.Add(target);
-
-                    browseResults.Add(result);
-                }
-                catch (Exception ex)
+                result.Targets.Add(target);
+            }
+            catch (ServiceResultException ex)
+            {
+                if (StatusCodes.BadNodeIdUnknown == ex.StatusCode || StatusCodes.BadNodeIdInvalid == ex.StatusCode)
                 {
-                    Log.Error($"Failed to retrieve node id for item {nodeId}. ", ex);
+                    //We know the nodeId does not exist because the OPC server has reported that
+                    if (SysLog.IsDebugEnabled)
+                    {
+                        SysLog.Error($"Failed to retrieve node id for item {nodeId}. ");
+                    }
+                    result.StatusCode = ex.StatusCode;
                 }
-
+                //We know the Node is not bad because the OPC Server has not report that .
+                //We continue searching for the Node.
+                SysLog.Debug($"Node {nodeId} was not located in a normal way.\n");
+            }
+            catch (Exception ex)
+            {
+                SysLog.Error($"Failed to retrieve node id for item {nodeId}. ", ex);
             }
 
-            return browseResults;
+            return result;
         }
     }
 }

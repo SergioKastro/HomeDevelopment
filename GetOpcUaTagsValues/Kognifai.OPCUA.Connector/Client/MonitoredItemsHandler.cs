@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using Kognifai.File;
 using Kognifai.OPCUA.Connector.Configuration;
 using log4net;
 using Opc.Ua;
@@ -13,58 +14,34 @@ namespace Kognifai.OPCUA.Connector.Client
         private static readonly ILog SysLog = LogManager.GetLogger(typeof(MonitoredItemsHandler));
         private readonly OpcUaClientSession _session;
         private readonly AppSettings _appSettings;
-
+        private readonly string _notLocatedFileName;
 
         public MonitoredItemsHandler(OpcUaClientSession session, AppSettings appSettings)
         {
             _session = session;
             _appSettings = appSettings;
+            _notLocatedFileName = _appSettings.PrefixNoLocatedSensorsFileName + $"{DateTime.Now:yyyy_MM_dd_HH_mm_ss}" + ".csv";
         }
 
 
         public List<MonitoredItem> CreateListMonitoredItems(List<string> listNodeIds)
         {
-            BrowsePathResultCollection browseResults;
-            try
-            {
-                browseResults = _session.GetBrowseResults(listNodeIds);
-            }
-            catch (Exception ex)
-            {
-                throw new Exception("Failed to translate item paths to ids", ex);
-            }
-
-            return PopulateListMonitoredItemsFromBrowsePathResultList(listNodeIds, browseResults);
-        }
-
-
-        private List<MonitoredItem> PopulateListMonitoredItemsFromBrowsePathResultList(IReadOnlyList<string> sensors, BrowsePathResultCollection browseResults)
-        {
             var items = new List<MonitoredItem>();
 
-            foreach (var sensor in sensors)
+            foreach (var sensorId in listNodeIds.Distinct().ToList())
             {
                 try
                 {
-                    var browseRes = GetBrowsePathResult(browseResults, sensor);
-
-                    if (StatusCode.IsNotGood(browseRes.StatusCode))
-                    {
-                        SysLog.Warn($"Failed to locate item at location {sensor}. Result for StatusCode: {browseRes.StatusCode}");
-                        continue;
-                    }
-                    var nodeId = (NodeId)browseRes.Targets.FirstOrDefault()?.TargetId;
-
                     var item = new MonitoredItem
                     {
-                        Handle = sensor,
-                        StartNodeId = nodeId,
-                        DisplayName = sensor,
+                        Handle = sensorId,
+                        StartNodeId = new NodeId(sensorId),
+                        DisplayName = sensorId,
                         NodeClass = NodeClass.Variable,
                         AttributeId = Attributes.Value,
                         SamplingInterval = _appSettings.SamplingIntervalMs,
                         MonitoringMode = MonitoringMode.Reporting,
-                        //For Polling and for MatrikonServer (Shell) we will use the default queue size, which is 0 (and it means that we will get just the latest value)
+                        // For MatrikonServer (Shell) we will use the default queue size, which is 0 (and it means that we will get just the latest value)
                         QueueSize = 0,
                         Filter = CreateMonitoredItemFilter()
 
@@ -74,25 +51,37 @@ namespace Kognifai.OPCUA.Connector.Client
                 }
                 catch (Exception ex)
                 {
-                    SysLog.Warn($"Failed to retrieve node id for item {sensor}", ex);
+                    var messageToWriteInResultFile = $"Failed to create monitoredItem for item {sensorId}. Time: {DateTime.Now:yyyy-MM-dd HH:mm:ss}";
+                    SysLog.Warn(messageToWriteInResultFile, ex);
+                    FileManager.WriteToFile(messageToWriteInResultFile, _notLocatedFileName, _appSettings.ResultFolderPath);
                 }
             }
-
-
+            
             return items;
         }
 
-        private BrowsePathResult GetBrowsePathResult(BrowsePathResultCollection browseResults, string nodeId)
+        public bool VerifyIfNodeIdIsValid(string sensorId)
         {
-            var target = new BrowsePathTarget
+            if (!_session.IsConnected)
             {
-                TargetId = nodeId
-            };
+                return false;
+            }
 
-            var browseRes = browseResults.Find(x => (NodeId)x.Targets.FirstOrDefault()?.TargetId == (NodeId)target.TargetId) ??
-                            new BrowsePathResult { StatusCode = StatusCodes.Bad };
+            var browseRes = _session.GetBrowseResultForOneNode(sensorId);
 
-            return browseRes;
+            if (browseRes.StatusCode != StatusCodes.BadNodeIdInvalid && browseRes.StatusCode != StatusCodes.BadNodeIdUnknown)
+            {
+                return true;
+            }
+
+            //We know for sure the NodeId cannot be found in the OPC Server because it has reported that.
+            //So we mark as not Valid
+            var messageToWriteInResultFile =
+                $"Failed to locate item at location {sensorId}. Result for StatusCode: {browseRes.StatusCode}. Time: {DateTime.Now:yyyy-MM-dd HH:mm:ss}";
+            SysLog.Warn(messageToWriteInResultFile);
+            FileManager.WriteToFile(messageToWriteInResultFile, _notLocatedFileName, _appSettings.ResultFolderPath);
+
+            return false;
         }
 
         private static MonitoringFilter CreateMonitoredItemFilter()

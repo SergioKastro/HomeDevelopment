@@ -36,10 +36,10 @@ namespace Kognifai.OPCUA.Connector.Client
                 DisplayName = Constants.DefaultSubscriptionName,
                 PublishingInterval = _appSettings.SubscriptionPublishIntervalMs,
                 TimestampsToReturn = TimestampsToReturn.Both,
-                Priority = _appSettings.SubscriptionPriority,
+                Priority = 0, //byte data type range from 0 to 255,
                 KeepAliveCount = _appSettings.SubscriptionKeepAliveCount,
                 LifetimeCount = _appSettings.SubscriptionLifetimeCount,
-                MaxNotificationsPerPublish = _appSettings.SubscriptionMaxNotificationsPerPublish
+                MaxNotificationsPerPublish = 100000
             };
 
             session.AddSubscription(_subscription);

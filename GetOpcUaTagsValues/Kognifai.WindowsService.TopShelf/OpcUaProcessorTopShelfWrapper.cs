@@ -11,16 +11,26 @@ namespace Kognifai.WindowsService.TopShelf
     {
         private static readonly ILog SysLog = LogManager.GetLogger(typeof(OpcUaProcessorTopShelfWrapper));
         private readonly AppSettings _appSettings;
+        private readonly OpcUaProcessor _processor;
+        private const int InitialIntervalInMsc = 5000;
 
         private Timer _timer;
-        private OpcUaProcessor _processor;
 
         public OpcUaProcessorTopShelfWrapper(AppSettings appSettings)
         {
             _appSettings = appSettings;
             _processor = new OpcUaProcessor(_appSettings);
+            _processor.ReconnectingEventHandler += ProcessorOnReconnecting;
 
-            SetTimer(1000);//Initial timer will run after 1 sec
+            SetTimer(InitialIntervalInMsc);//Initial timer will run after 5 sec
+        }
+
+        private void ProcessorOnReconnecting(object sender, EventArgs e)
+        {
+            //Re-start immediately the processor when reconnecting 
+            _timer.Stop();
+            SetTimer(InitialIntervalInMsc);
+            _timer.Start();
         }
 
         private void SetTimer(int intervalMs)
@@ -31,25 +41,28 @@ namespace Kognifai.WindowsService.TopShelf
             // Hook up the Elapsed event for the timer. 
             _timer.Elapsed += OnTimerOnElapsed;
             _timer.AutoReset = true;
-            _timer.Enabled = true;
         }
 
         private void OnTimerOnElapsed(object sender, ElapsedEventArgs eventArgs)
         {
-            _timer.Enabled = false;
+            _timer.Stop();
 
             if (_processor.IsRunning)
             {
+                //Force stop. The processor didn't finish and we force to start again after the ServiceIntervalMinutes happens
+                SysLog.Info($"Restarting the processor after {_appSettings.ServiceIntervalMinutes} minutes running.");
                 _processor.Stop();
             }
 
-            _processor.Start();
-
             //Set the correct Timer interval after the first time runs
             _timer.Interval = TimeSpan.FromMinutes(_appSettings.ServiceIntervalMinutes).TotalMilliseconds;
-            _timer.Enabled = true;
 
-            SysLog.Info($"Next execution time: {DateTime.Now.AddMinutes(_appSettings.ServiceIntervalMinutes)}.");
+            SysLog.Info("\n\n Starting OPCUA Windows Service for Static tags." +
+                        $"\n Next execution time: {DateTime.Now.AddMinutes(_appSettings.ServiceIntervalMinutes)}.\n");
+
+            _timer.Start();
+
+            _processor.Start();
         }
 
 
